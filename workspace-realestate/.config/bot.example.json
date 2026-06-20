@@ -1,0 +1,20 @@
+{
+  "whatsapp": {
+    "group_id": "<GROUP_ID>@g.us",
+    "group_name": "<GROUP_NAME>"
+  },
+  "drive": {
+    "remote": "gdrive",
+    "folder": "",
+    "local_dir": "deal-data/drive",
+    "_note": "rclone remote 'gdrive' is a READ-ONLY Google service account. root_folder_id (your shared Drive folder) is baked into the remote, so folder='' = the shared-folder root. The SA key lives OUTSIDE the repo at ~/.openclaw/secrets/gdrive-sa.json (chmod 600). Create with: rclone config create gdrive drive scope=drive.readonly service_account_file=<key> root_folder_id=<id> export_formats=pdf"
+  },
+  "tavily_secret_ref": "TAVILY_API_KEY",
+  "disclaimer": "<general-guidance-not-professional-advice disclaimer shown on tax/legal/financial answers>",
+  "session_hygiene": {
+    "enabled": true,
+    "recent_window": 40,
+    "idle_secs": 90,
+    "notify_on_reset": true
+  }
+}

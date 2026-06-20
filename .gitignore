@@ -1,0 +1,65 @@
+# ──────────────────────────────────────────────────────────────────────────
+# OpenClaw — what NEVER enters git.
+#
+# Design: agent CODE + PERSONA are committed; runtime DATA / STATE / SECRETS
+# stay on disk (the bots read them at runtime) but are excluded here.
+# A fresh clone is reconfigured from the committed *.example.json templates.
+# ──────────────────────────────────────────────────────────────────────────
+
+# ── Node deps ──
+node_modules/
+**/node_modules/
+
+# ── Per-agent runtime config (group_ids, sheet_ids, webhooks, drive ids) ──
+# The bot reads these at runtime. Commit *.example.json instead.
+**/.config/*.json
+!**/.config/*.example.json
+
+# ── Gateway / workspace state ──
+**/.openclaw/
+**/.openclaw-cli-images/
+**/.claude/
+*-state.json
+**/workspace-state.json
+**/source-origin.json
+
+# ── Runtime data trees (chat logs, runs, lessons, ledgers, rosters, telemetry) ──
+# covers chat-log/**, runs/**, lessons/**, self-edit/**, cases/**, players.json,
+# sessions.json, last-inbound.json, roster.md, watchdog/session-hygiene markers.
+**/data/
+
+# ── Real-estate deal documents (signed contracts, bank letters, PDFs) ──
+**/deal-data/
+
+# ── Per-person PII tree (CVs, profiles, cv-summary, sent-suggestions, *-state) ──
+**/people/
+
+# ── Dated/daily memory notes — NOT the curated MEMORY.md at a workspace root ──
+**/memory/
+
+# ── Inbound media cache (real photos, gov docs, customer images) ──
+**/media/inbound/
+
+# ── Backups (full PII snapshots) ──
+**/.backups/
+
+# ── Conversational-continuity mirror (verbatim recent chat) ──
+**/RECENT_CHAT.md
+
+# ── Logs / locks / OS cruft ──
+*.log
+*.lock
+.DS_Store
+
+# ── Safety re-includes: persona/doc files broad rules must never catch ──
+!**/AGENTS.md
+!**/SOUL.md
+!**/IDENTITY.md
+!**/USER.md
+!**/TOOLS.md
+!**/HEARTBEAT.md
+!**/CLAUDE.md
+!**/MEMORY.md
+!**/BOOTSTRAP.md
+!**/ACTIVATION.md
+!**/HOOK.md

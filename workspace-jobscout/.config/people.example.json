@@ -1,0 +1,25 @@
+{
+  "shared": {
+    "whatsapp_group_id": "<GROUP_ID>@g.us",
+    "default_person": "owner"
+  },
+  "people": [
+    {
+      "id": "owner", "name": "<Owner Name>", "role": "owner", "enabled": true,
+      "match_e164": ["972500000000"],
+      "capabilities": { "sheet": true, "gmail": true, "telegram": true },
+      "sheet": {
+        "webhook_url": "https://script.google.com/macros/s/<APPS_SCRIPT_DEPLOY_ID>/exec",
+        "sheet_id": "<SHEET_ID>",
+        "sheet_url": "https://docs.google.com/spreadsheets/d/<SHEET_ID>/edit"
+      },
+      "gmail": { "user": "you@example.com" },
+      "telegram": { "channels": ["<PUBLIC_CHANNEL>"], "max_messages_per_run": 100, "lookback_hours": 48 }
+    },
+    {
+      "id": "guest1", "name": "<Guest Name>", "role": "guest", "enabled": true,
+      "match_e164": ["972500000001"],
+      "capabilities": { "sheet": false, "gmail": false, "telegram": false }
+    }
+  ]
+}

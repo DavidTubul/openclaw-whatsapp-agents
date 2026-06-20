@@ -1,0 +1,100 @@
+{
+  "_note": "Subjects LIE. Comeet/Spark Hire/Greenhouse rejections often read like confirmations (e.g. 'Thank you for applying for the X position at Y'). Use these patterns only as a first pass; for anything in ambiguous_subjects_read_body, fetch the message with `gmail-search.mjs --uid <uid>` and classify from the decoded `text` body, NOT the subject.",
+  "applied": {
+    "_desc": "Genuine application-received confirmations only.",
+    "patterns_en": [
+      "we got it: thanks for applying",
+      "application received",
+      "we received your application",
+      "we got your application",
+      "thank you for submitting your (cv|resume|application)",
+      "your application (to|at) .* (has been )?(received|submitted)"
+    ],
+    "patterns_he": [
+      "תודה על הגשתך",
+      "תודה שהגשת מועמדות",
+      "קיבלנו את מועמדותך",
+      "הבקשה שלך התקבלה"
+    ]
+  },
+  "interview": {
+    "patterns_en": [
+      "schedule (a |an )?(call|interview|phone screen)",
+      "your (video |phone )?interview (with|at)",
+      "interview (availability|scheduled)",
+      "would like to (chat|talk|meet)",
+      "next step",
+      "phone screen",
+      "technical interview",
+      "let.?s set up a"
+    ],
+    "patterns_he": [
+      "(נשמח|רוצים) (לקבוע|לשמוע)",
+      "ראיון",
+      "שיחת היכרות",
+      "שיחה טלפונית",
+      "מועד פגישה"
+    ]
+  },
+  "rejected": {
+    "_desc": "Many rejections use confirmation-style subjects — confirm via body. The body phrases below are decisive.",
+    "subject_templates_that_are_usually_rejections": [
+      "thank you for applying for the .* position at .*",
+      "thanks for your recent interest in joining us at .*",
+      "thank you from .*",
+      "update (on|regarding) your application",
+      "important information (about|regarding) your application",
+      "an update on your .* application"
+    ],
+    "body_patterns_en": [
+      "move forward with (other|another) candidate",
+      "decided not to (move|proceed|continue)",
+      "proceed with other candidates",
+      "unfortunately",
+      "we regret",
+      "not the right fit",
+      "position (has been|was) filled",
+      "no longer (open|available)",
+      "don.?t have relevant opportunities"
+    ],
+    "patterns_he": [
+      "לצערנו",
+      "החלטנו לא להמשיך",
+      "החלטנו שלא להתקדם",
+      "המשרה אוישה",
+      "בהצלחה בהמשך"
+    ]
+  },
+  "offer": {
+    "patterns_en": [
+      "pleased to offer",
+      "offer letter",
+      "we would like to extend an offer",
+      "formal offer"
+    ],
+    "patterns_he": [
+      "אנו שמחים להציע",
+      "הצעת עבודה",
+      "מציעים לך"
+    ]
+  },
+  "ambiguous_subjects_read_body": [
+    "thank you for applying for the .* position at .*",
+    "thanks for your recent interest in joining us",
+    "thank you from .*",
+    "update (on|regarding) your application",
+    "important information (about|regarding) your application",
+    "your application (at|to) .*",
+    "^[A-Za-z0-9 .]+ \\| David",
+    "thank you for your (application|interest)"
+  ],
+  "noise_to_ignore": {
+    "patterns": [
+      "linkedin job alert",
+      "weekly digest",
+      "(?i)noreply.*indeed",
+      "newsletter",
+      "job alert"
+    ]
+  }
+}

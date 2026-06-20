@@ -1,0 +1,42 @@
+{
+  "business": {
+    "name": "<BUSINESS_NAME>",
+    "tagline": "<tagline>",
+    "_note": "Business facts (hours/phone/prices/delivery) live in skills/customer-service/business.md — verify with the owner before real use."
+  },
+  "whatsapp": {
+    "group_id": "<GROUP_ID>@g.us",
+    "group_name": "<GROUP_NAME>",
+    "require_mention": false,
+    "_note": "require_mention=false lets the bot see uncaptioned images (needed for the complaint-photo workflow)."
+  },
+  "bot": {
+    "name": "<BOT_NAME>",
+    "emoji": "🥜",
+    "mention_pattern": "<wake-word>"
+  },
+  "deployment": {
+    "phase": "mvp-demo-group"
+  },
+  "compensation_policy": {
+    "_doc": "Freshness-complaint compensation policy. Read by tools/lib/policy.mjs (deterministic, unit-tested).",
+    "min_days_to_expiry": 60,
+    "replacement_packages": 2,
+    "require_front_and_back": true,
+    "max_claims_per_phone_per_period": 1,
+    "period_days": 90
+  },
+  "sheet": {
+    "enabled": false,
+    "webhook_url": "",
+    "_note": "When enabled=false, cases are written only to data/cases/cases.jsonl. To enable the Google Sheet tracker, deploy tools/apps-script-webhook.gs and put the /exec URL here with enabled=true."
+  },
+  "media_inbound_dir": "~/.openclaw/media/inbound",
+  "tavily_secret_ref": "TAVILY_API_KEY",
+  "session_hygiene": {
+    "enabled": true,
+    "recent_window": 40,
+    "idle_secs": 90,
+    "notify_on_reset": true
+  }
+}

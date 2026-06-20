@@ -1,0 +1,14 @@
+{
+  "name": "job-scout-tools",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Job Scout CLI tools (sheet, search, telegram, gmail, jobkey)",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "imapflow": "^1.3.3",
+    "telegram": "^2.26.22"
+  }
+}

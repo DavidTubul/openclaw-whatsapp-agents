@@ -1,0 +1,10 @@
+{
+  "name": "pitzuchim-tools",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "description": "Tools for פיצי — the חנות הפיצוחים customer-service bot (cases ledger + compensation policy).",
+  "scripts": {
+    "test": "node --test"
+  }
+}
