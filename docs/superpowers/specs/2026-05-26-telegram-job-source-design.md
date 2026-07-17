@@ -125,7 +125,7 @@ Edit `workspace/skills/job-scout/prompt-scout.md` to add **Step 1b** immediately
 (Tavily search):
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools && node telegram.mjs fetch
+cd ~/open_claw/workspace/tools && node telegram.mjs fetch
 ```
 
 Parse its `candidates` and **merge into the same list** as the Tavily/LinkedIn candidates. Everything

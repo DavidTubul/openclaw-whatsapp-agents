@@ -28,6 +28,9 @@ function withPaths(p) {
       telegramState: `${base}/data/telegram-state.json`,
       gmailState: `${base}/data/gmail-state.json`,
       linkedinSeen: `${base}/data/linkedin-seen.json`,
+      dropsLog: `${base}/data/drops.jsonl`,
+      watchlist: `${base}/company-watchlist.json`,
+      atsSeen: `${base}/data/ats-seen.json`,
     },
   };
 }

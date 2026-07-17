@@ -41,3 +41,23 @@ test('matches a Hebrew allowed city', () => {
   assert.equal(r.keep, true);
   assert.equal(r.location, 'מודיעין');
 });
+
+// A flat-array config (yuval's bug): the lib must treat it as an allow-list, NOT as a no-op
+// that keeps every location. Before the fix loc.allowed was undefined → everything kept.
+test('flat-array config keeps an allowed city', () => {
+  const f = buildLocationFilter(['רחובות', 'תל אביב', 'מרכז']);
+  const r = evaluateLocation('Junior PM ברחובות', f);
+  assert.equal(r.keep, true);
+  assert.equal(r.location, 'רחובות');
+});
+
+test('flat-array config matches a mixed-language entry', () => {
+  const f = buildLocationFilter(['רחובות', 'Tel Aviv']);
+  assert.equal(evaluateLocation('Product Owner in Tel Aviv', f).keep, true);
+});
+
+test('allowed/blocked given as flat arrays still block', () => {
+  const f = buildLocationFilter({ allowed: ['תל אביב'], blocked: ['ירושלים'] });
+  assert.equal(evaluateLocation('PM בירושלים', f).keep, false);
+  assert.equal(evaluateLocation('PM בתל אביב', f).keep, true);
+});

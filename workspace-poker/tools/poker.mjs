@@ -13,21 +13,24 @@
 //   node tools/poker.mjs session new [--date YYYY-MM-DD] [--location "..."] [--time "21:00"]
 //   node tools/poker.mjs session list | show [id] | current
 //   node tools/poker.mjs session start [id]      # planned -> active
+//   node tools/poker.mjs session cancel [id]     # a night that never happened (refuses if money entries; --force overrides)
 //   node tools/poker.mjs rsvp <player> <in|out|maybe> [--session id]
 //   node tools/poker.mjs buyin <player> <amount> [--session id]
 //   node tools/poker.mjs cashout <player> <amount> [--session id]
-//   node tools/poker.mjs close [id]              # active -> closed (validates balance)
+//   node tools/poker.mjs close [id] [--force]    # active -> closed (validates balance; --force is a bare boolean flag)
 //   node tools/poker.mjs reopen [id]
 //   node tools/poker.mjs settle [id]             # who pays whom for a session
 //   node tools/poker.mjs results [id]            # per-player net for a session
 //   node tools/poker.mjs leaderboard             # lifetime net ranking
 //   node tools/poker.mjs balance [player]        # lifetime net (all or one player)
 
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeJsonAtomic } from "../../shared/lib/fs-atomic.mjs";
+import { todayInTz } from "../../shared/lib/time.mjs";
 import {
-  resolvePlayer, currentSession, findSession, sessionResults, sessionBalanced,
+  resolvePlayer, resolvePlayerEx, currentSession, findSession, sessionResults, sessionBalanced,
   settleUp, lifetimeStats, newSession, ensureEntry, setRsvp, normName,
 } from "./lib/poker.mjs";
 
@@ -43,28 +46,32 @@ async function loadJSON(file, fallback) {
   try { return JSON.parse(await readFile(file, "utf8")); }
   catch (e) { if (e.code === "ENOENT") return fallback; throw e; }
 }
-async function saveJSON(file, data) {
-  await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, JSON.stringify(data, null, 2) + "\n");
-}
+// Atomic (tmp+rename): the ledger is the only source of truth for real money — a crash
+// mid-write must never truncate it.
+async function saveJSON(file, data) { writeJsonAtomic(file, data); }
 const loadPlayers = () => loadJSON(PLAYERS_FILE, { players: [] });
 const loadSessions = () => loadJSON(SESSIONS_FILE, { sessions: [] });
 
-// --- arg parsing: positional args + --flag value pairs ---
+// --- arg parsing: positional args + boolean/value --flags ---
+// Boolean flags MUST be declared here: the old parser treated every --flag as value-taking, so
+// `close <id> --force` set force=undefined (falsy → refused) and `close --force <id>` swallowed
+// the id as force's value — the documented --force order simply never worked.
+const BOOL_FLAGS = new Set(["force"]);
 function parseArgs(argv) {
   const pos = [];
   const flags = {};
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i].startsWith("--")) { flags[argv[i].slice(2)] = argv[i + 1]; i++; }
-    else pos.push(argv[i]);
+    if (argv[i].startsWith("--")) {
+      const name = argv[i].slice(2);
+      if (BOOL_FLAGS.has(name) || i + 1 >= argv.length || argv[i + 1].startsWith("--")) flags[name] = true;
+      else { flags[name] = argv[i + 1]; i++; }
+    } else pos.push(argv[i]);
   }
   return { pos, flags };
 }
 
-function today() {
-  // Asia/Jerusalem date — avoid UTC drift for evening games.
-  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Jerusalem" });
-}
+// Asia/Jerusalem date — avoid UTC drift for evening games.
+const today = () => todayInTz();
 function nowIso() { return new Date().toISOString(); }
 
 function slugId(name) {
@@ -84,9 +91,12 @@ function pickSession(db, id) {
 }
 
 function requirePlayer(players, query) {
-  const p = resolvePlayer(players, query);
-  if (!p) fail(`unknown player: "${query}" — add with: add-player "${query}"`);
-  return p;
+  const r = resolvePlayerEx(players, query);
+  if (r.ambiguous) {
+    fail(`ambiguous player: "${query}" matches ${r.ambiguous.map((p) => p.name).join(", ")} — use the full name`);
+  }
+  if (!r.player) fail(`unknown player: "${query}" — add with: add-player "${query}"`);
+  return r.player;
 }
 
 async function main() {
@@ -153,6 +163,20 @@ async function main() {
         s.status = "active"; s.updated = nowIso();
         await saveJSON(SESSIONS_FILE, db);
         return out({ ok: true, session: s });
+      }
+      if (sub === "cancel") {
+        // For game nights that never happened. Cancelled sessions leave currentSession()'s view
+        // (so a later default buy-in can't land in a stale night) but are never deleted.
+        const s = pickSession(db, pos[1] || flags.session);
+        if (s.status === "closed") fail(`session ${s.id} is closed — reopen it first if you really mean to cancel`);
+        const hasMoney = Object.values(s.entries || {})
+          .some((e) => (e?.buyins || []).length || (e?.cashout !== null && e?.cashout !== undefined));
+        if (hasMoney && !flags.force) {
+          fail(`session ${s.id} has money entries — close it instead, or pass --force to cancel anyway`);
+        }
+        s.status = "cancelled"; s.updated = nowIso();
+        await saveJSON(SESSIONS_FILE, db);
+        return out({ ok: true, session: s.id, status: "cancelled" });
       }
       fail(`unknown session subcommand: ${sub}`);
       break;

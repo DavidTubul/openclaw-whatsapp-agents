@@ -18,7 +18,7 @@
 - **Hook-pack discovery**: a directory containing `HOOK.md` (YAML frontmatter with `metadata.openclaw.events`) + `handler.js`. Registered by adding the **parent** directory to `hooks.internal.load.extraDirs`. The bundled `command-logger` pack is the canonical template (`~/.nvm/versions/node/v22.22.3/lib/node_modules/openclaw/dist/bundled/command-logger/`).
 - **Group reaction works with just target+message-id** (no `--participant`): gateway logs show `Sent reaction "👍" -> message <id>` succeeding in the group `120363000000000000@g.us`.
 - **Group jid / config**: `workspace/.config/job-scout.json` → `whatsapp.group_id` = `"120363000000000000@g.us"`. Inbound group messages arrive with `conversationId === "120363000000000000@g.us"`.
-- **Launcher**: `/home/davidtobol2580/open_claw/openclaw` (bash → nvm use 22 → openclaw CLI). The gateway already runs on node v22.
+- **Launcher**: `~/open_claw/openclaw` (bash → nvm use 22 → openclaw CLI). The gateway already runs on node v22.
 - **`message react` flags**: `--channel whatsapp --target <jid> --message-id <id> --emoji 👍`, plus `--dry-run` (prints payload, sends nothing) and `--json`.
 - **Current config**: `~/.openclaw/openclaw.json` has top-level keys `["agents","gateway","session","tools","plugins","skills","wizard","meta","channels","bindings","auth"]` — there is **no** `hooks` key yet.
 
@@ -34,7 +34,7 @@
 - **Modify** `~/.openclaw/openclaw.json` — add `hooks.internal.load.extraDirs` + `hooks.internal.enabled`.
 - **Modify** `workspace/skills/job-scout/SKILL.md` — remove 👀/✅ instruction + react tool-row; extend rule #8.
 - **Modify** `workspace/skills/job-scout/prompt-qa.md` — delete "Working on it" indicator section; add one-line note.
-- **Modify** `/home/davidtobol2580/open_claw/CLAUDE.md` — document the new hook (operational map).
+- **Modify** `~/open_claw/CLAUDE.md` — document the new hook (operational map).
 
 Git note: the repo root is `workspace/` (top-level `open_claw/` is **not** a git repo). Commits in Tasks below `cd` into `workspace/` and commit only paths under it. Files outside `workspace/` (`~/.openclaw/openclaw.json`, top-level `CLAUDE.md`, `docs/`) are **not** version-controlled here — they are edited but not committed; this is called out in the relevant steps.
 
@@ -105,7 +105,7 @@ test("ignores non-message event types", () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools/hooks/ack-react && node --test`
+Run: `cd ~/open_claw/workspace/tools/hooks/ack-react && node --test`
 Expected: FAIL — `Cannot find module './handler.js'` (or `decideReaction is not a function`).
 
 - [ ] **Step 3: Write minimal implementation**
@@ -116,8 +116,8 @@ Create `workspace/tools/hooks/ack-react/handler.js`:
 import { execFile } from "node:child_process";
 import { readFile } from "node:fs/promises";
 
-const LAUNCHER = "/home/davidtobol2580/open_claw/openclaw";
-const CONFIG_PATH = "/home/davidtobol2580/open_claw/workspace/.config/job-scout.json";
+const LAUNCHER = "~/open_claw/openclaw";
+const CONFIG_PATH = "~/open_claw/workspace/.config/job-scout.json";
 const EMOJI = "👍";
 
 /**
@@ -168,13 +168,13 @@ export { runReact, resolveGroupId };
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools/hooks/ack-react && node --test`
+Run: `cd ~/open_claw/workspace/tools/hooks/ack-react && node --test`
 Expected: PASS — all 6 tests pass.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 git add tools/hooks/ack-react/handler.js tools/hooks/ack-react/handler.test.mjs
 git commit -m "feat(hooks): ack-react handler — decideReaction + 👍 react (TDD)"
 ```
@@ -204,9 +204,9 @@ test("runReact invokes the launcher in dry-run without throwing", async () => {
 
 - [ ] **Step 2: Run to verify it fails (or surfaces a real wiring problem)**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools/hooks/ack-react && ACK_REACT_DRY_RUN=1 node --test`
+Run: `cd ~/open_claw/workspace/tools/hooks/ack-react && ACK_REACT_DRY_RUN=1 node --test`
 Expected: this test FAILS only if the launcher path/flags are wrong. If `--dry-run` output doesn't echo the message-id, inspect actual output with:
-`/home/davidtobol2580/open_claw/openclaw message react --channel whatsapp --target "120363000000000000@g.us" --message-id "3EB0DRYRUN" --emoji 👍 --dry-run`
+`~/open_claw/openclaw message react --channel whatsapp --target "120363000000000000@g.us" --message-id "3EB0DRYRUN" --emoji 👍 --dry-run`
 and adjust the assertion's regex to match whatever stable token the dry-run prints (e.g. the target jid or `react`). Keep the assertion on a token that is definitely present.
 
 - [ ] **Step 3: Make it pass**
@@ -215,13 +215,13 @@ If the dry-run output doesn't contain the message-id, change the `assert.match` 
 
 - [ ] **Step 4: Run to verify it passes**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools/hooks/ack-react && node --test`
+Run: `cd ~/open_claw/workspace/tools/hooks/ack-react && node --test`
 Expected: PASS — all 7 tests pass.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 git add tools/hooks/ack-react/handler.test.mjs
 git commit -m "test(hooks): ack-react dry-run spawn check"
 ```
@@ -292,7 +292,7 @@ Expected: `HOOK.md  handler.js  handler.test.mjs`
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 git add tools/hooks/ack-react/HOOK.md
 git commit -m "feat(hooks): ack-react HOOK.md manifest"
 ```
@@ -319,14 +319,14 @@ jq '.hooks = (.hooks // {}) |
     .hooks.internal = (.hooks.internal // {}) |
     .hooks.internal.enabled = true |
     .hooks.internal.load = (.hooks.internal.load // {}) |
-    .hooks.internal.load.extraDirs = ((.hooks.internal.load.extraDirs // []) + ["/home/davidtobol2580/open_claw/workspace/tools/hooks"] | unique)' \
+    .hooks.internal.load.extraDirs = ((.hooks.internal.load.extraDirs // []) + ["~/open_claw/workspace/tools/hooks"] | unique)' \
   ~/.openclaw/openclaw.json > "$TMP" && mv "$TMP" ~/.openclaw/openclaw.json
 ```
 
 - [ ] **Step 3: Validate JSON + show the new block**
 
 Run: `jq '.hooks' ~/.openclaw/openclaw.json`
-Expected: prints `{ "internal": { "enabled": true, "load": { "extraDirs": ["/home/davidtobol2580/open_claw/workspace/tools/hooks"] } } }` and exits 0 (valid JSON). If jq errors, restore from the backup and fix.
+Expected: prints `{ "internal": { "enabled": true, "load": { "extraDirs": ["~/open_claw/workspace/tools/hooks"] } } }` and exits 0 (valid JSON). If jq errors, restore from the backup and fix.
 
 - [ ] **Step 4: Restart the gateway so it loads the new hook**
 
@@ -334,7 +334,7 @@ Run: `systemctl --user restart openclaw-gateway.service && sleep 5`
 
 - [ ] **Step 5: Verify the hook is discovered and ready**
 
-Run: `/home/davidtobol2580/open_claw/openclaw hooks list`
+Run: `~/open_claw/openclaw hooks list`
 Expected: a row `ack-react` with status `✓ ready` (alongside the 5 bundled hooks).
 If it is missing: check `openclaw hooks info ack-react` and the gateway journal
 (`journalctl --user -u openclaw-gateway.service -n 50 --no-pager | grep -i hook`) for a manifest/parse error; fix `HOOK.md` and restart.
@@ -349,7 +349,7 @@ If it is missing: check `openclaw hooks info ack-react` and the gateway journal
 
 - [ ] **Step 1: Confirm the gateway is healthy and WhatsApp is connected**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node tools/sheet.mjs ping`
+Run: `cd ~/open_claw/workspace && node tools/sheet.mjs ping`
 Expected: `{"ok":true,...}` (proves tooling path is alive).
 Run: `journalctl --user -u openclaw-gateway.service -n 20 --no-pager | grep -i whatsapp`
 Expected: recent WhatsApp activity, no `MissingAgentHarnessError`.
@@ -402,13 +402,13 @@ NOT run `openclaw message react` — that is now the hook's job. Just do the wor
 
 - [ ] **Step 4: Verify no stray 👀/✅ react instructions remain**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && grep -rn "👀\|message react\|Working on it" skills/job-scout/`
+Run: `cd ~/open_claw/workspace && grep -rn "👀\|message react\|Working on it" skills/job-scout/`
 Expected: no matches in `SKILL.md` / `prompt-qa.md` (the only remaining mentions, if any, should be none). If a stray reference remains, remove it.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 git add skills/job-scout/SKILL.md skills/job-scout/prompt-qa.md
 git commit -m "refactor(scout): drop LLM-driven 👀/✅ acks — hook owns acknowledgment now"
 ```
@@ -430,13 +430,13 @@ In `workspace/skills/job-scout/SKILL.md`, at the end of *Hard rules* item 8 ("Co
 
 - [ ] **Step 2: Verify**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && grep -n "דורש סשן פיתוח" skills/job-scout/SKILL.md`
+Run: `cd ~/open_claw/workspace && grep -n "דורש סשן פיתוח" skills/job-scout/SKILL.md`
 Expected: one match inside rule #8.
 
 - [ ] **Step 3: Commit**
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 git add skills/job-scout/SKILL.md
 git commit -m "docs(scout): rule #8 — say plainly what needs a dev session"
 ```
@@ -446,11 +446,11 @@ git commit -m "docs(scout): rule #8 — say plainly what needs a dev session"
 ## Task 8: Document the hook in the project map (CLAUDE.md)
 
 **Files:**
-- Modify: `/home/davidtobol2580/open_claw/CLAUDE.md` (NOT version-controlled — edit only)
+- Modify: `~/open_claw/CLAUDE.md` (NOT version-controlled — edit only)
 
 - [ ] **Step 1: Add the hook to the layout + a short operational note**
 
-In `/home/davidtobol2580/open_claw/CLAUDE.md`:
+In `~/open_claw/CLAUDE.md`:
 1. Under the `tools/` layout block, add a line:
    `│   └── hooks/ack-react/      # gateway hook: 👍 on every inbound group msg (deterministic ack)`
 2. Add a short subsection after the "Agent runtime / capabilities" section:
@@ -468,7 +468,7 @@ send a group message → journal shows `Sent reaction "👍" -> message <id>`.
 
 - [ ] **Step 2: Verify**
 
-Run: `grep -n "ack-react" /home/davidtobol2580/open_claw/CLAUDE.md`
+Run: `grep -n "ack-react" ~/open_claw/CLAUDE.md`
 Expected: at least 2 matches (layout line + subsection).
 
 - [ ] **Step 3: No commit** (top-level `CLAUDE.md` is outside the git repo). Note it was edited.

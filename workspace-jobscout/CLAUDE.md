@@ -1,15 +1,11 @@
 # Scotty (סקוטי) 🤖 — Job-Search Assistant (read this first)
 
 > Dev map for this agent's workspace. For the repo-wide picture of all agents, see
-> `../CLAUDE.md`. Last reviewed: 2026-06-15.
+> `../CLAUDE.md`. Last reviewed: 2026-06-29.
 
-> ⚠️ **Dev note — what the conversational agent actually loads.** OpenClaw's `claude-cli` agent
-> injects ONLY these workspace files into the system prompt: **AGENTS.md, SOUL.md, IDENTITY.md,
-> USER.md, TOOLS.md, HEARTBEAT.md**. It does **NOT** auto-load this `CLAUDE.md` or the skill's
-> `SKILL.md`/`prompt-*.md` (those are read on-demand only). So **any rule that must ALWAYS apply
-> belongs in `AGENTS.md` (or IDENTITY/SOUL)**. This `CLAUDE.md` is a dev map for humans / dev
-> sessions, not bot context. (It IS auto-loaded into a Claude Code dev session whose cwd is this
-> folder or the repo root.)
+> ⚠️ **Dev note.** OpenClaw injects ONLY the 6 persona files (**AGENTS/SOUL/IDENTITY/USER/TOOLS/HEARTBEAT.md**)
+> into the bot's system prompt — never this `CLAUDE.md` or `SKILL.md`/`prompt-*.md` (on-demand only). So **always-on
+> rules belong in `AGENTS.md`** (this file is a dev map for humans / dev sessions). Full explanation → `../CLAUDE.md`.
 
 ## What this is
 
@@ -25,7 +21,11 @@ a **multi-tenant job-search assistant**. It serves an **owner (David Tubul)** pl
 - The registry `workspace-jobscout/.config/people.json` defines who exists and what each can do (capabilities gate the tools).
 
 Scotty does, **per enabled person**:
-1. **Daily scout (08:00 Asia/Jerusalem, cron):** searches LinkedIn + Israeli boards (alljobs, drushim, jobmaster) + Indeed/Glassdoor via Tavily + (owner-only) a Telegram channel (IL_QA_Job), matched against that person's CV. Scout **loops over enabled people**.
+1. **Twice-daily scout (Asia/Jerusalem, 2 crons)** — searches LinkedIn + Israeli boards (alljobs, drushim, jobmaster) + Indeed/Glassdoor via Tavily + (owner-only) a Telegram channel (IL_QA_Job) + direct ATS poll (Step 1b2), matched against that person's CV. Scout **loops over enabled people**.
+   - **08:00 FULL** — `job-scout-daily`, id `5d7587f3-…`. Runs the whole prompt-scout.md pipeline incl. Step 1 (`search.mjs`/Tavily).
+   - **15:00 afternoon** — `job-scout-afternoon`, id `ef7fd460-…` (added 2026-07-01). Same pipeline, same target/model (sonnet-5/high), with the **ONE difference that it skips Step 1 (`search.mjs`/Tavily)** to protect the free ~1000/mo Tavily quota (quota overrun = the end-of-month "no jobs"). **Everything else runs normally:** Step 1a LinkedIn, 1b Telegram, 1b2 ATS, and — for the owner (david) per `capabilities` — **Step 3b/4 Sheet dedupe+append, Step 5 Gmail status-sync, 5b/5c reconcile** (Gmail + Sheet get updated in the afternoon too, not just the morning).
+   - Ledger dedupe means the afternoon surfaces only genuinely-new jobs since the morning; heartbeat if 0.
+   - ⚠️ **Cron payloads ENUMERATE their steps.** The Tavily-skip (and every step that DOES run) is set by the cron **message payload**, not a prompt-scout.md flag — so a new/changed scout step won't run until the payload is updated, and if the payload doesn't list Steps 4/5/5b/5c the agent skips Gmail/Sheet. Cron edit = infra, needs David's approval. (Payload version history → `docs/HISTORY.md`.)
 2. **CV match:** scores each job against that person's CV summary (the LLM itself does the matching reasoning).
 3. **Push new jobs** to the shared WhatsApp group (Hebrew, clickable source URLs). **Always sends each enabled person a daily message** — a short heartbeat when 0 new (replaces the old "0 new → send nothing" rule).
 4. **Track applications** (owner-only) in a **Google Sheet** via an Apps Script webhook.
@@ -43,13 +43,14 @@ workspace-jobscout/                        # Scotty's "home" — its memory & id
 ├── SOUL.md / AGENTS.md           # behavior rules, heartbeat/memory conventions (AUTO-LOADED into bot)
 ├── USER.md                       # about David (currently mostly empty — fill over time)
 ├── .config/
-│   ├── people.json               # 👥 PERSON REGISTRY: shared.{group_id,default_person} + people[] (owner/guest, capabilities, match_e164)
-│   └── job-scout.json            # ⚙️ shared live config: WhatsApp group_id, sheet id/webhook, cron, session_hygiene
+│   ├── people.json               # 👥 PERSON REGISTRY: shared.{default_person} + people[] (owner/guest, capabilities, match_e164). WhatsApp group id now lives in shared/registry.json, not here
+│   └── job-scout.json            # ⚙️ DOMAIN config only: sheet id/webhook, google/tavily/timezone. WhatsApp wiring + session-hygiene moved to shared/registry.json (registry-v2 refactor)
 ├── people/<id>/                  # 👤 PER-PERSON home (e.g. david, yossi)
 │   ├── profile/{cv.pdf,cv-summary.json,profile.md}   # that person's CV + search prefs
 │   ├── sources.json              # their LinkedIn URL template + Tavily queries
+│   ├── company-watchlist.json    # companies whose ATS career pages ats.mjs polls directly (david: 58, evidence-seeded)
 │   ├── allowed-locations.json    # their city allow/block filter
-│   └── data/                     # sent-suggestions.json, telegram-state.json, gmail-state.json, linkedin-seen.json
+│   └── data/                     # sent-suggestions.json, telegram-state.json, gmail-state.json, linkedin-seen.json, ats-seen.json
 ├── skills/job-scout/             # THE skill — see below
 ├── tools/                        # real executables the skill shells out to
 │   ├── lib/people.mjs            # registry resolver: resolvePerson, listEnabled, personByE164
@@ -59,53 +60,53 @@ workspace-jobscout/                        # Scotty's "home" — its memory & id
 │   ├── self-edit.mjs             # 🛡️ self-extension safety harness: snapshot|verify|revert|log|changelog — deterministic backup/test/auto-revert so chat-driven self-edits (prompt-self-extend.md) can't silently break the cron. verify runs the unit suite + syntax-checks every tool .mjs + validates guarded config JSON. SELF_EDIT_DIR env isolates the audit trail (tests use it).
 │   ├── search.mjs                # Tavily job search (Israeli boards + Indeed/Glassdoor) — takes --person <id>
 │   ├── linkedin.mjs              # LinkedIn FREE guest-endpoint search (no auth) — takes --person <id>; backfill→incremental via people/<id>/data/linkedin-seen.json; helpers in lib/linkedin.mjs
+│   ├── ats.mjs                   # 🆕 direct ATS career-page poll (Comeet/Greenhouse/Lever/Ashby/BambooHR public JSON + Getro VC-board sitemaps, no auth/quota) — takes --person <id>; polls people/<id>/company-watchlist.json; backfill→incremental via people/<id>/data/ats-seen.json; pure logic in lib/ats.mjs
 │   ├── gmail-search.mjs          # Gmail read-only search — --person <id>, INCREMENTAL (gmail-state.json + --after-uid); owner-only
 │   ├── telegram.mjs              # Telegram channel fetch (gramjs/MTProto) — takes --person <id>; owner-only
 │   ├── apps-script-webhook.gs    # the Apps Script deployed behind the sheet webhook
-│   └── hooks/
-│       ├── ack-react/            # gateway hook: 👍 on every inbound group msg (deterministic ack)
-│       └── chat-log/             # gateway hook: mirrors chat + writes data/last-inbound.json (sender id for Q&A routing)
+│   └── session-hygiene.mjs       # thin shim → shared/lib/session-hygiene.mjs (agentId "main"); params from shared/registry.json
+│                                 # gateway hooks are SHARED — shared/hooks/{ack-react,chat-log,group-reply-policy}/
+│                                 # resolve "main" by group via the registry (the old tools/hooks/ copies were deleted 2026-06-26)
 └── data/
     ├── runs/YYYY-MM-DD.json      # per-day run summary (candidates/kept/new/sent)
     └── last-inbound.json         # {e164,fromMe,person,ts} of the last inbound — Q&A sender resolution
 ```
 
-> Note: David was **migrated** from the old single-user layout (`workspace-jobscout/profile/` + `skills/job-scout/sources.json` + `allowed-locations.json`) into `workspace-jobscout/people/david/`. Those legacy paths, plus the orphaned top-level `workspace-jobscout/data/{sent-suggestions,telegram-state,linkedin-seen}.json`, were **deleted in the 2026-05-30 cleanup** — per-person paths under `workspace-jobscout/people/<id>/` are now the only source of truth.
+> Note: David was migrated from the old single-user layout into `people/david/` (2026-05-30 cleanup); per-person paths under `people/<id>/` are now the only source of truth (migration detail → `docs/HISTORY.md`).
 
 ## The job-scout skill (`workspace-jobscout/skills/job-scout/`)
 
 - `SKILL.md` — entry point, mode routing, **hard rules** (see below), tool table.
 - `prompt-scout.md` — the daily pipeline (run on `scout` / `/scout`); **loops over enabled people**, gates Sheet/Gmail by `capabilities`, always runs the ledger pre-filter, and always sends each person a daily message (heartbeat when 0 new). **Final-output discipline (2026-06-07):** in the cron scout session openclaw delivers the agent's final turn text to the group as a message, so a closing recap leaks (David was getting an English "Daily scout complete…" summary every night). The prompt now mandates the run **end silently** (empty final output) — the only user-facing messages are the per-person Hebrew reports sent in Step 7; run facts go to the Step 8 log only.
 - `prompt-qa.md` — conversational Q&A mode (any free-form WhatsApp text); **Step 0 resolves the sender** (owner via `fromMe` / known guest by e164 / unknown = safe public persona) from `data/last-inbound.json`. Owner-only admin commands: `/people`, `/disable <id>`, `/enable <id>`, hard-delete-with-confirmation manage the registry.
-- `prompt-weekly-review.md` — **self-improvement loop** (run on `weekly-review` / `/weekly-review`, owner-only). Reads the Sheet via `tools/weekly-review.mjs` (outcome funnel: per-source/level/score-band engagement vs. noise rate), distils lessons into `data/lessons/lessons-YYYY-WW.md`, and **proposes** (never auto-applies) criteria tuning to David in WhatsApp. Approval-gated by hard rule #8: David replies "כן תחיל" → a later Q&A turn applies the `PROPOSED CHANGES` JSON block from the newest lessons file to `people/david/sources.json` / `cv-summary.json`. Cron `job-scout-weekly-review` (id `551bdb61-…`), Sat 22:00 Asia/Jerusalem, opus-4-7/high.
+- `prompt-weekly-review.md` — **self-improvement loop** (run on `weekly-review` / `/weekly-review`, owner-only). Reads the Sheet via `tools/weekly-review.mjs` (outcome funnel: per-source/level/score-band engagement vs. noise rate), distils lessons into `data/lessons/lessons-YYYY-WW.md`, and **proposes** (never auto-applies) criteria tuning to David in WhatsApp. Approval-gated by hard rule #8: David replies "כן תחיל" → a later Q&A turn applies the `PROPOSED CHANGES` JSON block from the newest lessons file to `people/david/sources.json` / `cv-summary.json`. Cron `job-scout-weekly-review` (id `551bdb61-…`), Sat 22:00 Asia/Jerusalem, sonnet-5/high.
 - `prompt-self-extend.md` — **chat-driven self-extension** (added 2026-06-08; owner-only). The mechanism behind hard rule #8: David can evolve Scotty *from WhatsApp* without a dev session. SKILL.md mode-routing #3 loads it when the owner asks to change behavior / add a feature / fix something / do something not currently supported. Three paths: **A. one-off** (do it now with existing tools, no file edit, no approval — e.g. an ad-hoc deep scan via the LinkedIn guest endpoint with a custom `f_TPR` window, read-only so it doesn't corrupt ledger/Sheet); **B. permanent feature** (plan → David's explicit "כן" → safe-edit loop); **C. infrastructure** (secrets/OAuth/gateway/hooks/channels/cron → REFUSE, needs dev session). The Path-B safe-edit loop is **snapshot → edit → verify → revert-on-fail → log**, all via the deterministic `tools/self-edit.mjs` harness so a bad self-edit can never silently break the 08:00 cron. Auditable: "מה שינית?" → `self-edit.mjs changelog`.
 - `router.md` — intent table: command prefixes (`/status`, `/list`, `/delete N`) + Hebrew NL regexes + status word map + row-number convention (**user job # = sheet row − 1**, header is row 1) + self-extend triggers ("תוסיף/תתקן/תתאים לעצמך", "מה שינית?").
 - `sources.json` / `allowed-locations.json` — **per-person** under `workspace-jobscout/people/<id>/` (LinkedIn URL template + Tavily queries; city allow/block lists — center-Israel allow, Jerusalem/Haifa/PT/etc blocked; Remote-IL OK, Remote-global blocked). (The legacy copies under `skills/job-scout/` were deleted 2026-05-30.)
 - `keywords.json` — email classification regexes (applied/interview/rejected/offer + noise) — owner Gmail sync only.
 - CV-matching and per-source how-to are documented **inline** in `prompt-scout.md` (Step 2 = holistic per-person CV match; Steps 1–1c = each source). The old `skills/job-scout/tools/*.md` how-to docs were deleted 2026-05-30 (orphaned + single-user-stale).
 
-### LinkedIn search-quality tuning (2026-06-03 — from David's Gmail self-apply gap analysis)
-Cross-referencing David's application-confirmation emails (Comeet/Greenhouse/Ashby/etc.) against the Sheet showed the daily scout was **missing real QA/Automation jobs** he had to find+apply to himself on LinkedIn (Redis, Droxi, Claroty, Bagira, Transmit Security, Nebius, Quantum Machines), **and** surfacing **off-field noise** (e.g. a "GTM Engineer"). Root causes + fixes, all in `tools/lib/linkedin.mjs` + `tools/linkedin.mjs` (unit-tested in `lib/linkedin.test.mjs`):
-1. **Guest endpoint sorted by RELEVANCE, not date** → the same heavily-promoted ~10 jobs dominated page 0 and genuinely-new postings sat buried past the per-page cap, so incremental runs never reached them. **Fix:** `buildSearchUrl` now adds `sortBy=DD` (date-descending). Verified live: changes + freshens results.
-2. **Incremental early-stop after ONE all-seen page** could cut a keyword's sweep short on a stale/cached page. **Fix:** require **2 consecutive** all-seen pages before stopping (with `sortBy=DD`, an all-seen page = older history, so this is safe). Pagination via `start` genuinely returns new jobs (verified).
-3. **Off-field false positives** (GTM/Sales/Data/plain Software/C++/Network Engineer): the JD-automation vet kept them because their JDs mention "automation". **Fix:** new `titleHardExcluded(title)` drops on the TITLE alone, BEFORE the JD fetch — buckets: junior, management (IC-only), and **off-field = title carries NO QA/test/automation/SDET/verification/validation/RPA signal** (the robust rule — every role David wants has one; subsumes GTM/sales/dev without enumerating). Live effect: 51→16 candidates, 122 off-field/junior/mgmt titles dropped, all 16 survivors genuine QA/automation. Residual HW/silicon-verification edge cases (NVIDIA DPU/BSP) pass the title gate (have "verification") and are left to the LLM CV-match (Step 2) backstop.
-4. Added LinkedIn keywords for David: `QA Automation Engineer`, `Automation Infrastructure`, `Software Engineer in Test` (`people/david/sources.json`).
-Note: most companies David applies to confirm from their **ATS** (Comeet/Greenhouse/Ashby/Lever/Workday), not LinkedIn — the daily scout's job is to surface the LinkedIn posting EARLY so he doesn't have to find it himself.
+### Under-the-radar sources — direct ATS poll (durable rules)
+`tools/ats.mjs` + `tools/lib/ats.mjs` = scout **Step 1b2**. Polls each person's `people/<id>/company-watchlist.json` — Comeet / Greenhouse / Lever / Ashby / BambooHR public JSON + Getro VC-board sitemaps, **no auth, no quota**; state in `people/<id>/data/ats-seen.json` (incl. cached Comeet UID+token, re-scraped on failure). Guards beyond the shared location filter: **`foreignLocation()`** foreign-office drop (the shared filter is **fail-open on unknown cities** so global boards flood without it), a **manual-title drop** (title-level — ATS JDs are NOT fetched), and a **30-day zombie-posting window** (`--window-days` overrides; missing stamps pass). Tavily board queries were near-useless (funnel: 4/205 sheet rows) and were reworked to **~19/day ≈ 570/mo** across all people to stay under the free **1000/mo** quota (quota overrun = the end-of-month "no jobs"). ⚠️ Step 1b2 runs in the 15:00 cron only because its payload was updated to list it (see the cron-payload gotcha in duty #1). (Full investigation → `docs/HISTORY.md`.)
 
-### the guest's LinkedIn jobs were nuked by TWO QA-specific layers — both made per-person (2026-06-08)
-`linkedin.mjs` had **two** David/QA-specific filters running unconditionally on every person, which together dropped ~all of a non-QA person's (the guest: TPM/PM) cards:
-1. **`titleHardExcluded()`** — its `off-field` bucket nukes all non-QA titles; its `management` bucket nukes her target VP-Delivery/Head-of-PMO. Fix: now driven by `sources.json` → `linkedin.title_filter` (`{junior?,management?,off_field?:"qa"}`); absent = no hard title filter. David = `{junior,management,off_field:"qa"}` (unchanged); the guest = `{junior}`.
-2. **`vetAll()` "manual-only" drop** (`vetVerdict()` in `lib/linkedin.mjs`) — dropped any card whose title+JD lack automation signals. A TPM JD never mentions automation → dropped. Fix: gated behind `automationVet` (= `title_filter.off_field==='qa'`); off for non-QA people (closed-check still always runs).
-Net before: the guest got LinkedIn `count:0` daily (Tavily-only). guest unaffected (no LinkedIn keywords). Both fixes unit-tested in `lib/linkedin.test.mjs`.
+### LinkedIn search (durable rules)
+In `tools/lib/linkedin.mjs` + `tools/linkedin.mjs` (unit-tested `lib/linkedin.test.mjs`):
+- Guest endpoint is **relevance-sorted by default** → `buildSearchUrl` forces `sortBy=DD` (date-descending) so genuinely-new postings aren't buried past the per-page cap.
+- Incremental early-stop requires **2 consecutive all-seen pages** (with `sortBy=DD` an all-seen page = older history, so this is safe).
+- **`titleHardExcluded()`** drops junior / management / off-field on the **TITLE, before the JD fetch**. Driven **per-person** by `sources.json → linkedin.title_filter` (`{junior?,management?,off_field?:"qa"}`; absent = no hard filter). The automation JD-vet (`vetVerdict()`) is gated on `off_field==='qa'` — a **non-QA guest must NOT get the QA filters** (off-field/management/automation-vet all off for them; closed-check still always runs).
+- `FRESH_WINDOW = 7d` caps `f_TPR` on **every** run, including a new person's first backfill.
 
-### On-demand DEEP scan (2026-06-08 — `linkedin.mjs --window-days N --no-persist`)
-For chat-driven "סריקה עמוקה N יום" requests (via `prompt-self-extend.md` Path A). `--window-days N` searches the last N days, **bypassing the daily `FRESH_WINDOW` 7-day cap** with full pagination (no early-stop); `--no-persist` is **read-only** (doesn't touch the daily seen-ledger AND returns already-sent jobs too → comprehensive + repeatable). Returns compact JSON from a subprocess — so a deep scan never bloats the conversational turn (the root of the inline-improvisation failure: Scotty returned 5 jobs when ~246 raw / ~20 genuine existed). Pure helpers `resolveScanWindow()` + `vetVerdict()` are unit-tested. The agent CV-matches the returned candidates and marks already-sent via `ledger.mjs check`.
+(Full root-cause narrative, the guest QA-filter regression, and the on-demand DEEP-scan improvisation postmortem → `docs/HISTORY.md`.)
 
-### Scout-quality + Q&A fixes (2026-06-08 — from David "הוא הוזה / משרות ישנות / משרות של אורח")
-Three independent fixes after a guest (the guest) got year-old jobs + guest's finance jobs, and Q&A hallucinated:
-1. **Stale jobs → freshness cap.** Tavily had NO date filter (CLI can't pass `time_range`, results carry no date) and LinkedIn used a 30-day backfill window for new guests. Fixes: (a) `tools/lib/linkedin.mjs` `FRESH_WINDOW = 7*DAY` (604800), and `tools/linkedin.mjs` caps `tprSeconds = Math.min(rawWindow, FRESH_WINDOW)` so `f_TPR=r604800` is the ceiling on EVERY run (incl. a new guest's first backfill); (b) `tools/search.mjs` reads `sources.tavily.time_range` and appends a recency hint (`past 24 hours`/`past week`) to each query (soft bias — CLI can't pass the real param); (c) `prompt-scout.md` Step 2 hard backstop: **DROP any candidate whose snippet/title shows it was posted >~30d ago** ("לפני שנה"/"Posted 6 months ago"/old year). Tested: `linkedin.test.mjs` 25 pass.
-2. **Per-person leak → hard isolation.** The morning per-person *output* was actually correctly scoped, but the prompt never enforced per-iteration reset (latent merge risk), and David's report had NO `@mention` (his `match_e164` was `[]`) so it visually blended into guest's tagged report. Fixes: `prompt-scout.md` Step 0 **🚧 HARD PER-PERSON ISOLATION** rule (discard all candidate state at the start of each person's iteration; per-field self-check before each send) + scoped the "merge into the same list" wording to "`P`'s list for THIS iteration"; `people.json` david `match_e164: ["972500000000"]` so his report is tagged; robust owner-header instruction (omit `@` if no e164 but always keep `בוקר טוב {name}!`).
-3. **Q&A hallucination → grounding.** Asked "do you remember the bug in the guest's search?", the bot recited the documented `sheet.mjs` wrong-row bug (which lives in `prompt-qa.md` itself, lines ~110-136) and **fabricated** a JFrog/Droxi/Rayzone example (none exist in any data file) — instead of reading RECENT_CHAT.md where the real issue was written. Fix: `prompt-qa.md` "Recent context" now has a **⚠️ Recall-questions = grounding-required** rule: answer "what happened/do you remember/what was the bug/what did X say" ONLY from RECENT_CHAT.md + data files, NEVER pull a documented fact from the prompt as the recent event, NEVER fabricate specifics, and say "אין לי את זה בהקשר האחרון" when it's not there.
+### On-demand DEEP scan (`linkedin.mjs --window-days N --no-persist`)
+For chat-driven "סריקה עמוקה N יום" requests (via `prompt-self-extend.md` Path A). `--window-days N` searches the last N days, **bypassing the daily `FRESH_WINDOW` 7-day cap** with full pagination (no early-stop); `--no-persist` is **read-only** (doesn't touch the daily seen-ledger AND returns already-sent jobs too → comprehensive + repeatable). Returns compact JSON from a subprocess so a deep scan never bloats the conversational turn (this is why it's a tool, not inline improvisation — see `docs/HISTORY.md`). Pure helpers `resolveScanWindow()` + `vetVerdict()` are unit-tested. The agent CV-matches the returned candidates and marks already-sent via `ledger.mjs check`.
+
+### Scout / Q&A discipline (durable rules)
+- `prompt-scout.md` **Step 0 = 🚧 HARD PER-PERSON ISOLATION**: discard all candidate state at the start of each person's iteration; per-field self-check before each send (David's report is tagged via `people.json` `match_e164`).
+- `prompt-scout.md` **Step 2 backstop**: DROP any candidate whose title/snippet shows it was posted **>~30d ago** ("לפני שנה"/"Posted 6 months ago"/old year).
+- `prompt-qa.md` **Recall-questions = grounding-required**: answer recent-event questions ("what happened / do you remember / what was the bug / what did X say") **ONLY from RECENT_CHAT.md + data files** — never recite a documented example from the prompt as the recent event, never fabricate specifics, and say **"אין לי את זה בהקשר האחרון"** when it's not there.
+
+(Full postmortems — stale-jobs, per-person leak, Q&A hallucination → `docs/HISTORY.md`.)
 
 ### Sheet columns (Apps Script tab "Jobs", A:O)
 `A id(sha256[:12] of normalized company|role) · B תאריך מציאה · C מקור · D תפקיד · E חברה · F מיקום · G רמה · H ציון התאמה · I נימוק · J קישור · K סטטוס · L תאריך הגשה · M הערות · N זוהה ממייל · O עודכן`
@@ -113,7 +114,7 @@ Three independent fixes after a guest (the guest) got year-old jobs + guest's fi
 Status (col K), exactly one: `⏳ Pending` `✅ Applied` `📞 Interview` `🎉 Offer` `❌ Rejected` `⛔ Not Interested`.
 
 ## Hard rules (NEVER violate)
-1. WhatsApp sends go **only** to the configured shared `group_id` — never any other target. (See also the user-memory note: never guess messaging targets.)
+1. WhatsApp sends go **only** to the configured group (the `main` agent's group in `shared/registry.json`) — never any other target. (See also the user-memory note: never guess messaging targets.)
 2. Gmail is **read-only**, **owner-only** — never reply/label/modify; guests have no Gmail.
 3. **Never delete a sheet row** — hide via status `⛔ Not Interested`. Exception: explicit `/delete N`. (Sheet is owner-only.)
 4. **Never apply to jobs** — only surface & track.
@@ -124,7 +125,7 @@ Status (col K), exactly one: `⏳ Pending` `✅ Applied` `📞 Interview` `🎉 
 
 ## How to operate the tools (shell)
 ```bash
-cd /home/davidtobol2580/open_claw/workspace-jobscout
+cd ~/open_claw/workspace-jobscout
 node tools/sheet.mjs ping                       # health check (returns {"ok":true,...})
 node tools/sheet.mjs read [statusFilter]        # read tracker rows
 node tools/sheet.mjs append '<row-or-array>'    # add job(s)
@@ -153,12 +154,12 @@ The `openclaw` launcher wraps the CLI with Node 22 (via nvm). Secrets: `TAVILY_A
 **Shared** (`workspace-jobscout/.config/job-scout.json`):
 - WhatsApp group: `Job Scout 🤖` (`120363000000000000@g.us`) — the one shared group for all people
 - Sheet (owner-only): id `<SHEET_ID>`, edited via Apps Script webhook (`/exec` URL in config)
-- Cron: `0 8 * * *`, tz `Asia/Jerusalem`
+- Cron (two runs, tz `Asia/Jerusalem`): `0 8 * * *` FULL (`job-scout-daily`) + `0 15 * * *` LIGHT/no-Tavily (`job-scout-afternoon`, id `ef7fd460-…`). Weekly review `0 22 * * 6` (`job-scout-weekly-review`).
 
 **WhatsApp threaded replies (`~/.openclaw/openclaw.json` → `channels.whatsapp.accounts.default`, set 2026-06-08):**
 `replyToMode: "all"` — the gateway auto-attaches a quote-reference to the triggering inbound message on EVERY message Scotty sends, so replies thread onto David's messages (WhatsApp-style). Enum: `off|first|all|batched`. Picked up via openclaw's fresh-config load on the next inbound (config-watcher); `openclaw gateway restart` (when chat is idle) is the certain fallback. NOTE: openclaw's WhatsApp adapter does NOT surface the *inbound* quote/`contextInfo` (only Telegram/Feishu do), so Scotty cannot see WHICH older message David replied to or its text — that would need a vendored adapter patch (extract `contextInfo.quotedMessage`+`stanzaId` → inject into event metadata → `chat-log` hook resolves it against `data/chat-log/<group>.jsonl`). Deliberately NOT built (fragile, upgrade-wiped).
 
-**Person registry** (`workspace-jobscout/.config/people.json`): `shared.{whatsapp_group_id, default_person}` + `people[]`,
+**Person registry** (`workspace-jobscout/.config/people.json`): `shared.{default_person}` + `people[]`,
 each `{id, name, role:owner|guest, enabled, match_e164, capabilities:{sheet,gmail,telegram}, [sheet], [gmail], [telegram]}`.
 Currently:
 - **`david`** — owner, enabled, capabilities sheet+gmail+telegram all true. Gmail `owner@example.com` (read-only, incremental), Telegram channel IL_QA_Job (read-only).
@@ -183,23 +184,32 @@ The shared group **hides the sender** from the agent turn (the LLM only sees the
 Conversational + cron sessions run as `claude -p` via the OpenClaw CLI backend (`--output-format stream-json --setting-sources user --allowedTools mcp__openclaw__*`), with MCP config pointing at the local OpenClaw gateway (port 18789; per-session MCP at e.g. 41293). Auth is the user's **Claude Max-5x subscription via OAuth** (`~/.claude/.credentials.json`) — billing is rate-limit bound, not per-token.
 
 **Model resolution (verified 2026-05-26 — `SKILL.md` `model:` frontmatter is NOT parsed by OpenClaw):**
-- **Daily cron scout** → `anthropic/claude-opus-4-7`, `thinking: high` (set on the cron job; `openclaw cron get 5d7587f3-…` to confirm, `openclaw cron edit <id> --model … --thinking …` to change). Heavy pipeline, 1×/day, best CV-match quality.
-- **WhatsApp conversational** → inherits the agent default `anthropic/claude-sonnet-4-6` (`~/.openclaw/openclaw.json` `agents.defaults.model.primary`). Fast + good Hebrew; change there if needed.
+- **Daily cron scout** → `anthropic/claude-sonnet-5`, `thinking: high` (set on the cron job; `openclaw cron get 5d7587f3-…` to confirm, `openclaw cron edit <id> --model … --thinking …` to change). Heavy pipeline, 1×/day, best CV-match quality.
+- **WhatsApp conversational** → inherits the agent default `anthropic/claude-sonnet-5` (`~/.openclaw/openclaw.json` `agents.defaults.model.primary`). Fast + good Hebrew; change there if needed.
 - Both paths run with `--permission-mode bypassPermissions` (verified live in `ps`), so built-in tools (Bash/Read/Edit/Write) are auto-approved and the agent can shell out and edit its own skill files. Conversational sessions are launched with `--effort medium --model sonnet`; the cron path carries `model`/`thinking` in its job payload (set via `openclaw cron edit --model/--thinking`), where the OpenClaw `thinking` level maps to the underlying claude `--effort`.
 - OpenClaw MCP tools exposed: `cron`, `update_plan`, `sessions_list/history/send/spawn/yield`, `session_status`, `subagents`, `web_search`, `web_fetch`, `memory_search`, `memory_get`. Messaging/sheets go via Bash → `openclaw` CLI + `tools/*.mjs` (no MCP "send" tool).
 - Implication: Scotty *can* self-modify prompts from a WhatsApp chat (Sonnet, takes effect next session) but it's unreliable and ungated — and it **cannot** add secrets, OAuth scopes, new channels, or gateway hooks from chat. Build capabilities in a focused dev session here; operate the bot via chat.
 
 ## Operations & known failure modes → `../docs/RUNBOOK.md`
 
+Historical tuning records & postmortems → `docs/HISTORY.md`.
+
 Operational mechanisms and every root-caused failure mode live in **`../docs/RUNBOOK.md`** (not auto-loaded — read it when debugging). Index of what's there:
 
 - **Acknowledgment hook (ack-react)** — automatic 👍 on every inbound; do NOT react from the prompt.
-- **Session hygiene** — keeps the group session small so the (broken) native compactor never runs; `session-hygiene.mjs` + timer; continuity via the `chat-log` hook → `RECENT_CHAT.md`.
+- **Session hygiene** — keeps the group session small so the (broken) native compactor never runs; `tools/session-hygiene.mjs` (a thin shim over `shared/lib/session-hygiene.mjs`, agentId "main") + timer; continuity via the shared `chat-log` hook → `RECENT_CHAT.md`.
 - **Ghost mode** — bot suppressed phone push notifications (companion device on David's own number); fixed via `sendReadReceipts:false` + a vendored presence patch.
 - **Chat reliability** — "chat crashes on my messages" = gateway restarted mid-reply; **never restart to apply prompt/skill edits (they hot-reload)**.
 - **Failure mode: user-scope plugins leak into Scotty** (stall) — disabled `superpowers`; keep `~/.claude` user scope minimal.
 - **Failure mode: agent harness de-registers** (`MissingAgentHarnessError`, silent bot) — config + vendored selection-guard fix; ⚠️ re-apply the patch after an openclaw upgrade.
 - **Failure mode: compaction "Missing API key for provider anthropic"** — added a `claude-cli/oauth` auth profile (subscription, no API key).
-- **Failure mode: "likes but doesn't reply" (compaction-poisoned session)** — assistant-only transcript fails preflight compaction; auto-healed by watchdog CHECK C → `session-hygiene.mjs --force-reset-poisoned`.
+- **Failure mode: "likes but doesn't reply" (compaction-poisoned session)** — the session ENTRY's `totalTokens` overruns the context window (assistant-only accumulation, e.g. daily-cron posts) → preflight compaction required but fails. Proactively cleared every 5 min by each bot's `session-hygiene` timer (now ALL 5 bots have one) and backstopped by the **multi-agent** watchdog CHECK C (loops every registry agent, scopes by `sessionKey=agent:<id>:`, resets via the shared entry-deleting reset, **no "resend" nudge**). Overhauled 2026-06-29 — see RUNBOOK "compaction-poisoned session".
 
 ⚠️ **NON-STOCK vendored patches** (ghost mode + harness de-registration) are overwritten by `npm i -g openclaw` / `openclaw update` — re-apply from `../docs/RUNBOOK.md` after any upgrade.
+
+## 2026-07-15 overhaul (David's policy + sources revamp) — read before touching filters
+- **David's policy:** junior/mid/unknown levels all pass (`title_filter.junior:false`, `internships:true` still drops interns); LLM KEEP rule is config-driven via `sources.json → scoring` (`min_score:50`, `levels_acceptable`); guests keep legacy 70/senior+mid via defaults.
+- **Reposts:** `ats.mjs` tracks `seen_updated` baselines (`isRepost`, ≥21d jump ⇒ `repost:true`); LinkedIn candidates carry `posted` (card `<time datetime>`, JSON-LD fallback); prompt Step 3a repost triage (OWNER-ONLY) can resurface already-sent jobs 🔁; ledger `add` is an upsert (`first_date` preserved).
+- **New providers** in `lib/ats.mjs`: workday (POST CXS, Intel/NVIDIA), amazon, smartrecruiters (Wix2), lever-eu (Mobileye), drushim (3 query feeds). Tavily = 9 X-ray queries across all ATS domains, `time_range:"week"`. Weekly review now auto-discovers new watchlist companies (cap 10/wk).
+- **New prompts:** `prompt-backfill-david.md` (one-time, re-run-guarded, SKILL.md routing rule 4) and `prompt-daily-question.md` (daily 08:33 cron `jobscout-daily-question`, delivery mode none — the prompt sends itself; answers graded via prompt-qa.md, state in `data/learning/`).
+- Rollback snapshot for the whole overhaul: `self-edit revert 20260715-123644-sc0r`.

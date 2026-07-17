@@ -8,7 +8,9 @@
 //   node gmail-search.mjs --uid 12345                     # fetch one message + decoded text body
 import { ImapFlow } from 'imapflow';
 import { resolvePerson } from './lib/people.mjs';
-import { readJsonSafe, writeJsonAtomic } from './lib/cli.mjs';
+import { readJsonSafe } from './lib/cli.mjs';
+import { writeJsonAtomic } from '../../shared/lib/fs-atomic.mjs';
+import { decodeMimeBody } from '../../shared/lib/gmail.mjs';
 
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, cur, i, arr) => {
@@ -34,36 +36,9 @@ if (args.person && !args.uid) {
   lastUid = readJsonSafe(gmailStateFile, {})?.last_uid ?? null;
 }
 
-// Decode a raw RFC822 message into readable plain text: walks MIME parts,
-// decodes quoted-printable / base64, strips HTML. Prefers text/plain, falls
-// back to the longest text/html part. Needed because subject lines lie
-// (e.g. Comeet rejections read "Thank you for applying ..."), so the daily
-// status sync must be able to read bodies.
-function decodeQP(s) {
-  return s.replace(/=\r?\n/g, '').replace(/=([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)));
-}
-function decodeMimeBody(rawSource) {
-  const src = rawSource.toString('utf8');
-  const parts = src.split(/\r?\n--[A-Za-z0-9'()+_,\-.\/:=? ]+\r?\n/);
-  let plain = '', html = '';
-  for (const p of parts) {
-    const m = p.match(/\r?\n\r?\n/);
-    if (!m) continue;
-    const headers = p.slice(0, m.index).toLowerCase();
-    if (!/content-type:\s*text\/(plain|html)/i.test(headers)) continue;
-    let body = p.slice(m.index + m[0].length);
-    if (headers.includes('quoted-printable')) body = Buffer.from(decodeQP(body), 'binary').toString('utf8');
-    else if (headers.includes('base64')) { try { body = Buffer.from(body.replace(/\s+/g, ''), 'base64').toString('utf8'); } catch { /* keep raw */ } }
-    if (/content-type:\s*text\/plain/i.test(headers)) { if (body.length > plain.length) plain = body; }
-    else if (body.length > html.length) html = body;
-  }
-  let text = plain;
-  if (!text.trim() && html) {
-    text = html.replace(/<style[\s\S]*?<\/style>/gi, ' ').replace(/<[^>]+>/g, ' ')
-      .replace(/&nbsp;|&zwnj;/gi, ' ').replace(/&amp;/gi, '&').replace(/&[a-z]+;/gi, ' ');
-  }
-  return text.replace(/\s+/g, ' ').trim();
-}
+// MIME decoding (decodeMimeBody / decodeQP) now lives in shared/lib/gmail.mjs — imported above.
+// Bodies must be readable because subject lines lie (e.g. Comeet rejections read "Thank you for
+// applying…"), so the daily status sync reads the body, not just the envelope.
 
 const client = new ImapFlow({
   host: 'imap.gmail.com',
@@ -123,8 +98,11 @@ try {
       }
 
       // Persist the high-water UID so the next --person run only sees newer mail.
-      if (gmailStateFile && maxUid) {
-        try { writeJsonAtomic(gmailStateFile, { last_uid: maxUid, updated_at: new Date().toISOString() }); } catch { /* best-effort */ }
+      // SKIP when --query is present: gmailRaw returns a FILTERED subset of the inbox, so its
+      // max UID is not a true high-water mark — persisting it would corrupt the incremental
+      // baseline and make the next run skip mail it never saw.
+      if (gmailStateFile && maxUid && !args.query) {
+        try { writeJsonAtomic(gmailStateFile, { last_uid: maxUid, updated_at: new Date().toISOString() }, { pretty: 0 }); } catch { /* best-effort */ }
       }
     }
     console.log(JSON.stringify({ ok: true, count: out.length, results: out }));

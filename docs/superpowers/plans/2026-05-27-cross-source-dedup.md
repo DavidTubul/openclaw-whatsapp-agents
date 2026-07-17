@@ -112,15 +112,15 @@ test('missing company or role => null', () => {
 
 - [ ] **Step 3: Run the test — expect PASS**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test jobkey.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test jobkey.test.mjs`
 Expected: `# pass 4`, `# fail 0`. (Implementation is written in Step 1, so this passes immediately and locks behavior.)
 
 - [ ] **Step 4: Verify the CLI directly**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node jobkey.mjs "SolarEdge Ltd." "QA Automation Engineer"; echo "---"; node jobkey.mjs "solaredge" "qa automation engineer"`
+Run: `cd ~/open_claw/workspace/tools && node jobkey.mjs "SolarEdge Ltd." "QA Automation Engineer"; echo "---"; node jobkey.mjs "solaredge" "qa automation engineer"`
 Expected: the two ids printed are identical, 12 hex chars each.
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node jobkey.mjs "" "QA"; echo "exit=$?"`
+Run: `cd ~/open_claw/workspace/tools && node jobkey.mjs "" "QA"; echo "exit=$?"`
 Expected: stderr message about required args, `exit=1`.
 
 ---
@@ -141,7 +141,7 @@ Dedup is by **company + role**, NOT by URL — the same job appears under differ
 
 **3a. Read full existing rows:**
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools && node sheet.mjs read
+cd ~/open_claw/workspace/tools && node sheet.mjs read
 ```
 For each existing row capture: `sheet_row, id (A), role (D), company (E), source (C), url (J), status (K)`.
 
@@ -153,12 +153,12 @@ For each existing row capture: `sheet_row, id (A), role (D), company (E), source
 
 **3c. Dedupe each canonical candidate against existing rows:** Compute its content id:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools && node jobkey.mjs "<company>" "<role>"
+cd ~/open_claw/workspace/tools && node jobkey.mjs "<company>" "<role>"
 ```
 Match it to existing rows two ways: (1) id equals an existing row's `id`; (2) semantic company+role match to a row you read in 3a (covers legacy rows whose id is URL-based). Then:
 - **Match found AND this candidate carries a source not already in that row's `source` (col C):** update the existing row to add the source and the secondary link — do NOT resend to WhatsApp:
   ```bash
-  cd /home/davidtobol2580/open_claw/workspace/tools && node sheet.mjs update <sheet_row> '{"source":"<joined sources>","notes":"<existing notes + secondary link>"}'
+  cd ~/open_claw/workspace/tools && node sheet.mjs update <sheet_row> '{"source":"<joined sources>","notes":"<existing notes + secondary link>"}'
   ```
 - **Match found, no new source:** drop the candidate.
 - **No match:** it is genuinely new → it goes to Step 4 as a `new_job` (carry its computed content id).
@@ -168,9 +168,9 @@ If `node jobkey.mjs` exits non-zero for a candidate (missing company/role), fall
 
 - [ ] **Step 2: Verification checkpoint — Step 3 references the new tools/logic**
 
-Run: `grep -c "jobkey.mjs\|content-based\|intra-batch\|company + role" /home/davidtobol2580/open_claw/workspace/skills/job-scout/prompt-scout.md`
+Run: `grep -c "jobkey.mjs\|content-based\|intra-batch\|company + role" ~/open_claw/workspace/skills/job-scout/prompt-scout.md`
 Expected: ≥ 3 matches. And confirm the old URL-hash instruction is gone:
-Run: `grep -c "sha256sum | cut -c1-12" /home/davidtobol2580/open_claw/workspace/skills/job-scout/prompt-scout.md`
+Run: `grep -c "sha256sum | cut -c1-12" ~/open_claw/workspace/skills/job-scout/prompt-scout.md`
 Expected: `0`.
 
 ---
@@ -189,14 +189,14 @@ Replace the "## Step 4 — Append new jobs to the Sheet" section with:
 
 For all `new_jobs`, build a JSON array of row objects and append in ONE call. Use the **content id** from Step 3c (`jobkey.mjs`), the joined `source`, the primary `url`, and put any secondary links in `notes`. All fields must be normalized (see Step 2 "Uniform presentation").
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools && node sheet.mjs append '[{"id":"<content id>","found_at":"<YYYY-MM-DD>","source":"<joined sources>","title":"<normalized role>","company":"<normalized company>","location":"<canonical location>","level":"<level>","score":<score>,"reason":"<hebrew reason>","url":"<primary url>","notes":"<secondary links or empty>","status":"⏳ Pending"}, ...]'
+cd ~/open_claw/workspace/tools && node sheet.mjs append '[{"id":"<content id>","found_at":"<YYYY-MM-DD>","source":"<joined sources>","title":"<normalized role>","company":"<normalized company>","location":"<canonical location>","level":"<level>","score":<score>,"reason":"<hebrew reason>","url":"<primary url>","notes":"<secondary links or empty>","status":"⏳ Pending"}, ...]'
 ```
 Confirm `appended` equals the number of new_jobs.
 ````
 
 - [ ] **Step 2: Verification checkpoint**
 
-Run: `grep -c "content id\|joined sources\|normalized role" /home/davidtobol2580/open_claw/workspace/skills/job-scout/prompt-scout.md`
+Run: `grep -c "content id\|joined sources\|normalized role" ~/open_claw/workspace/skills/job-scout/prompt-scout.md`
 Expected: ≥ 3 matches.
 
 ---
@@ -222,7 +222,7 @@ Whatever the source, normalize each field so all rows look the same in the Sheet
 
 - [ ] **Step 2: Verification checkpoint**
 
-Run: `grep -c "Step 2b\|Uniform presentation\|never guess" /home/davidtobol2580/open_claw/workspace/skills/job-scout/prompt-scout.md`
+Run: `grep -c "Step 2b\|Uniform presentation\|never guess" ~/open_claw/workspace/skills/job-scout/prompt-scout.md`
 Expected: ≥ 2 matches.
 
 ---
@@ -239,19 +239,19 @@ In the "### Step 5b — Enrich new \"applied\" rows" section, replace the first 
 ````markdown
 For any **applied** email, FIRST match it to an existing Sheet row by **company + role** (not by URL): compare the email's company/role to the rows read in Step 5. If a row matches, just update its status (do NOT append):
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools && node sheet.mjs update <sheet_row> '{"status":"✅ Applied","applied_at":"<YYYY-MM-DD>","email_snippet":"<subject, first 100 chars>"}'
+cd ~/open_claw/workspace/tools && node sheet.mjs update <sheet_row> '{"status":"✅ Applied","applied_at":"<YYYY-MM-DD>","email_snippet":"<subject, first 100 chars>"}'
 ```
 Only if NO existing row matches by company+role, append a new basic row (use the content id from `node jobkey.mjs "<company>" "<title>"`):
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools && node sheet.mjs append '[{"id":"<content id>","found_at":"<date>","source":"gmail-self-apply","title":"<from subject>","company":"<company>","status":"✅ Applied","applied_at":"<date>","email_snippet":"<subject>"}]'
+cd ~/open_claw/workspace/tools && node sheet.mjs append '[{"id":"<content id>","found_at":"<date>","source":"gmail-self-apply","title":"<from subject>","company":"<company>","status":"✅ Applied","applied_at":"<date>","email_snippet":"<subject>"}]'
 ```
 ````
 
 - [ ] **Step 2: Verification checkpoint**
 
-Run: `grep -c "match it to an existing Sheet row by \*\*company + role\|do NOT append" /home/davidtobol2580/open_claw/workspace/skills/job-scout/prompt-scout.md`
+Run: `grep -c "match it to an existing Sheet row by \*\*company + role\|do NOT append" ~/open_claw/workspace/skills/job-scout/prompt-scout.md`
 Expected: ≥ 1 match. Confirm the old "no matching row exists ... append a basic row" wording is replaced:
-Run: `grep -c "where no matching row exists in the Sheet yet (new company), append" /home/davidtobol2580/open_claw/workspace/skills/job-scout/prompt-scout.md`
+Run: `grep -c "where no matching row exists in the Sheet yet (new company), append" ~/open_claw/workspace/skills/job-scout/prompt-scout.md`
 Expected: `0`.
 
 ---
@@ -266,7 +266,7 @@ Expected: `0`.
 
 In `workspace/skills/job-scout/SKILL.md`, add a row to the "Real tools" table after the Sheet row:
 ```
-| Content dedup key | `node /home/davidtobol2580/open_claw/workspace/tools/jobkey.mjs "<company>" "<role>"` (→ stable 12-char id for company+role dedup) |
+| Content dedup key | `node ~/open_claw/workspace/tools/jobkey.mjs "<company>" "<role>"` (→ stable 12-char id for company+role dedup) |
 ```
 
 - [ ] **Step 2: Update CLAUDE.md**
@@ -278,7 +278,7 @@ In `CLAUDE.md`:
 
 - [ ] **Step 3: Verification checkpoint**
 
-Run: `grep -c "jobkey" /home/davidtobol2580/open_claw/workspace/skills/job-scout/SKILL.md /home/davidtobol2580/open_claw/CLAUDE.md; grep -c "company|role" /home/davidtobol2580/open_claw/CLAUDE.md`
+Run: `grep -c "jobkey" ~/open_claw/workspace/skills/job-scout/SKILL.md ~/open_claw/CLAUDE.md; grep -c "company|role" ~/open_claw/CLAUDE.md`
 Expected: both files report ≥1 `jobkey`; CLAUDE.md reports ≥1 `company|role`.
 
 ---

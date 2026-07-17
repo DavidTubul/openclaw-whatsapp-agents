@@ -15,6 +15,12 @@ node_modules/
 **/.config/*.json
 !**/.config/*.example.json
 
+# ── Shared agent registry (owner phone, every group_id, host path, wiring) ──
+# Single source of truth that aggregates the per-bot PII. Commit the example only;
+# the loader (shared/lib/agent-registry.mjs) falls back to the example on a fresh clone.
+shared/registry.json
+!shared/registry.example.json
+
 # ── Gateway / workspace state ──
 **/.openclaw/
 **/.openclaw-cli-images/
@@ -40,8 +46,9 @@ node_modules/
 # ── Inbound media cache (real photos, gov docs, customer images) ──
 **/media/inbound/
 
-# ── Backups (full PII snapshots) ──
+# ── Backups (full PII snapshots, incl. openclaw.json/registry.json copies) ──
 **/.backups/
+**/backups/
 
 # ── Conversational-continuity mirror (verbatim recent chat) ──
 **/RECENT_CHAT.md
@@ -63,3 +70,6 @@ node_modules/
 !**/BOOTSTRAP.md
 !**/ACTIVATION.md
 !**/HOOK.md
+
+# fleet watchdog runtime state (cooldowns)
+shared/.state/

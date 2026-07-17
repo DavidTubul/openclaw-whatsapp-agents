@@ -144,7 +144,7 @@ test('matches a Hebrew allowed city', () => {
 
 - [ ] **Step 3: Run the test — expect PASS**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/location-filter.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/location-filter.test.mjs`
 Expected: all 6 tests pass (`# pass 6`). (The module already exists from Step 1, so this passes immediately — it locks the behavior before refactoring `search.mjs`.)
 
 - [ ] **Step 4: Refactor `search.mjs` to import the module**
@@ -159,10 +159,10 @@ Leave all call sites (`buildLocationFilter(locations)`, `evaluateLocation(combin
 
 - [ ] **Step 5: Verification checkpoint — search still runs**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node -e "import('./search.mjs').catch(e=>{console.error('IMPORT FAIL',e);process.exit(1)})" --check 2>&1 | head` — confirm no syntax/import error. Then confirm the functions are gone from `search.mjs`:
-Run: `grep -c "function buildLocationFilter\|function evaluateLocation" /home/davidtobol2580/open_claw/workspace/tools/search.mjs`
+Run: `cd ~/open_claw/workspace/tools && node -e "import('./search.mjs').catch(e=>{console.error('IMPORT FAIL',e);process.exit(1)})" --check 2>&1 | head` — confirm no syntax/import error. Then confirm the functions are gone from `search.mjs`:
+Run: `grep -c "function buildLocationFilter\|function evaluateLocation" ~/open_claw/workspace/tools/search.mjs`
 Expected: `0`. And confirm the import line is present:
-Run: `grep -n "location-filter.mjs" /home/davidtobol2580/open_claw/workspace/tools/search.mjs`
+Run: `grep -n "location-filter.mjs" ~/open_claw/workspace/tools/search.mjs`
 Expected: one match.
 
 ---
@@ -174,12 +174,12 @@ Expected: one match.
 
 - [ ] **Step 1: Install**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && npm install telegram`
+Run: `cd ~/open_claw/workspace/tools && npm install telegram`
 Expected: completes; `telegram` added to `dependencies` in `package.json`.
 
 - [ ] **Step 2: Verification checkpoint — import works**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node -e "import('telegram').then(m=>console.log('OK', typeof m.TelegramClient))"`
+Run: `cd ~/open_claw/workspace/tools && node -e "import('telegram').then(m=>console.log('OK', typeof m.TelegramClient))"`
 Expected: `OK function`.
 
 ---
@@ -210,13 +210,13 @@ import { stdin as input, stdout as output } from 'node:process';
 import { buildLocationFilter, evaluateLocation } from './lib/location-filter.mjs';
 
 const CONFIG_PATHS = [
-  '/home/davidtobol2580/open_claw/workspace/.config/job-scout.json',
+  '~/open_claw/workspace/.config/job-scout.json',
 ];
 const LOCATIONS_PATHS = [
-  '/home/davidtobol2580/open_claw/workspace/skills/job-scout/allowed-locations.json',
-  '/home/davidtobol2580/.openclaw/agents/main/skills/job-scout/allowed-locations.json',
+  '~/open_claw/workspace/skills/job-scout/allowed-locations.json',
+  '~/.openclaw/agents/main/skills/job-scout/allowed-locations.json',
 ];
-const STATE_PATH = '/home/davidtobol2580/open_claw/workspace/data/telegram-state.json';
+const STATE_PATH = '~/open_claw/workspace/data/telegram-state.json';
 
 function fail(msg) {
   console.log(JSON.stringify({ ok: false, error: String(msg) }));
@@ -270,7 +270,7 @@ main().catch((e) => fail(e?.message || e));
 
 - [ ] **Step 2: Verification checkpoint — usage error path**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node telegram.mjs bogus`
+Run: `cd ~/open_claw/workspace/tools && node telegram.mjs bogus`
 Expected: prints `{"ok":false,"error":"Unknown command \"bogus\". Use: login | fetch"}` and exits 1. (This confirms the file parses and the skeleton runs even before `fetch` is implemented — `fetch` is referenced but not called on this path.)
 
 ---
@@ -365,13 +365,13 @@ async function fetch() {
 
 - [ ] **Step 2: Verification checkpoint — fetch guards on missing session**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && env -u TELEGRAM_SESSION TELEGRAM_API_ID=1 TELEGRAM_API_HASH=x node telegram.mjs fetch`
+Run: `cd ~/open_claw/workspace/tools && env -u TELEGRAM_SESSION TELEGRAM_API_ID=1 TELEGRAM_API_HASH=x node telegram.mjs fetch`
 Expected: `{"ok":false,"error":"TELEGRAM_SESSION not set (run `node telegram.mjs login` first)"}`. (Confirms the command parses and the guard fires without needing live credentials.)
 
 - [ ] **Step 3: Verification checkpoint — config-missing path**
 
 Temporarily confirm the channels guard by running with a fake session but before config is added (if Task 6 not yet done). With real creds present, this is skipped. Otherwise:
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && TELEGRAM_SESSION=x TELEGRAM_API_ID=1 TELEGRAM_API_HASH=x node telegram.mjs fetch`
+Run: `cd ~/open_claw/workspace/tools && TELEGRAM_SESSION=x TELEGRAM_API_ID=1 TELEGRAM_API_HASH=x node telegram.mjs fetch`
 Expected: either `{"ok":false,"error":"No telegram.channels configured"}` (if config section absent) or an AUTH/connection error `{"ok":false,...}` (if config present but session fake). Both are acceptable `ok:false` JSON — confirms no crash.
 
 ---
@@ -397,7 +397,7 @@ Ensure the JSON remains valid (add the comma after the preceding block).
 
 - [ ] **Step 2: Verification checkpoint — valid JSON + values**
 
-Run: `node -e "const c=require('/home/davidtobol2580/open_claw/workspace/.config/job-scout.json'); console.log(JSON.stringify(c.telegram))"`
+Run: `node -e "const c=require('~/open_claw/workspace/.config/job-scout.json'); console.log(JSON.stringify(c.telegram))"`
 Expected: `{"channels":["IL_QA_Job"],"max_messages_per_run":100,"lookback_hours":48}`.
 
 ---
@@ -415,7 +415,7 @@ In `workspace/skills/job-scout/prompt-scout.md`, immediately after the Step 1 bl
 ## Step 1b — Telegram channel fetch
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools && node telegram.mjs fetch
+cd ~/open_claw/workspace/tools && node telegram.mjs fetch
 ```
 This outputs `{"ok":true,"count":N,"candidates":[{source:"telegram:<channel>",title:"",company:"",location,url,snippet,score,msg_id,date}]}`. The candidates are free-text Hebrew posts: `title`/`company`/`location` are EMPTY — you fill them in Step 2 from `snippet`. The `url` is the message permalink (use it as the source URL). **Merge these candidates into the same list** as the Step 1 Tavily candidates before scoring.
 
@@ -432,7 +432,7 @@ In the Step 2 section, after the `level` bullet (currently `prompt-scout.md:25`)
 
 - [ ] **Step 3: Verification checkpoint — pipeline doc references the tool**
 
-Run: `grep -n "telegram.mjs fetch\|telegram:\*\|Step 1b" /home/davidtobol2580/open_claw/workspace/skills/job-scout/prompt-scout.md`
+Run: `grep -n "telegram.mjs fetch\|telegram:\*\|Step 1b" ~/open_claw/workspace/skills/job-scout/prompt-scout.md`
 Expected: matches for Step 1b heading, the `node telegram.mjs fetch` command, and the `telegram:*` scoring note.
 
 ---
@@ -458,7 +458,7 @@ Then: `systemctl --user daemon-reload && systemctl --user restart openclaw-gatew
 - [ ] **Step 2: One-time interactive login (David runs in his terminal)**
 
 ```
-! cd /home/davidtobol2580/open_claw/workspace/tools && TELEGRAM_API_ID=<id> TELEGRAM_API_HASH=<hash> node telegram.mjs login
+! cd ~/open_claw/workspace/tools && TELEGRAM_API_ID=<id> TELEGRAM_API_HASH=<hash> node telegram.mjs login
 ```
 Enter phone → SMS code → 2FA (if set). Copy the printed session string (stdout, the long line).
 
@@ -469,7 +469,7 @@ Add to `secrets.conf`: `Environment=TELEGRAM_SESSION=<string>` then `systemctl -
 - [ ] **Step 4: Verification checkpoint — live fetch**
 
 After the gateway restart, run a real fetch (env now injected by systemd; run via the gateway's environment or pass the three vars explicitly):
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node telegram.mjs fetch`
+Run: `cd ~/open_claw/workspace/tools && node telegram.mjs fetch`
 Expected: `{"ok":true,"count":N,"candidates":[...]}` with at least the channel processed (N may be small/0 on first run depending on recent posts; `ok:true` is the success signal). Confirm `workspace/data/telegram-state.json` now exists with a `last_seen_id` for `IL_QA_Job`.
 
 ---
@@ -515,7 +515,7 @@ Never post or reply in Telegram — read-only, same as Gmail.
 In `workspace/skills/job-scout/SKILL.md`, add a row to the "Real tools" table (after the Web/LinkedIn row):
 
 ```markdown
-| Telegram channel job fetch | `node /home/davidtobol2580/open_claw/workspace/tools/telegram.mjs fetch` (gramjs/MTProto, location-filtered) |
+| Telegram channel job fetch | `node ~/open_claw/workspace/tools/telegram.mjs fetch` (gramjs/MTProto, location-filtered) |
 ```
 
 And extend hard rule #2 area by adding a new bullet under "Hard boundaries":
@@ -534,7 +534,7 @@ In `CLAUDE.md`:
 
 - [ ] **Step 4: Verification checkpoint — docs present**
 
-Run: `ls /home/davidtobol2580/open_claw/workspace/skills/job-scout/tools/telegram-fetch.md && grep -c "telegram" /home/davidtobol2580/open_claw/workspace/skills/job-scout/SKILL.md /home/davidtobol2580/open_claw/CLAUDE.md`
+Run: `ls ~/open_claw/workspace/skills/job-scout/tools/telegram-fetch.md && grep -c "telegram" ~/open_claw/workspace/skills/job-scout/SKILL.md ~/open_claw/CLAUDE.md`
 Expected: the file lists, and both files report ≥1 match.
 
 ---

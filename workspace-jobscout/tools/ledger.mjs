@@ -2,16 +2,17 @@
 // Per-person "sent jobs" ledger — dedup memory (the only memory for guests with no Sheet).
 //   node ledger.mjs <person> check '[{"company":"..","role":".."}|{"id":".."}]'  -> {already:[ids], fresh:[items]}
 //   node ledger.mjs <person> add   '[{"id":"..","url":"..","title":"..","company":"..","date":".."}]' -> {total}
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
-import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { jobId } from './jobkey.mjs';
 import { resolvePerson } from './lib/people.mjs';
+import { readJsonSafe } from './lib/cli.mjs';
+import { writeJsonAtomic } from '../../shared/lib/fs-atomic.mjs';
 
 function read(file) {
-  if (!existsSync(file)) return { sent: [] };
-  try { const o = JSON.parse(readFileSync(file, 'utf8')); o.sent = o.sent || []; return o; }
-  catch { return { sent: [] }; }
+  const o = readJsonSafe(file, null);
+  if (!o || typeof o !== 'object') return { sent: [] };
+  o.sent = o.sent || [];
+  return o;
 }
 
 // Resolve each item to an id: prefer explicit item.id, else jobId(company, role).
@@ -36,13 +37,28 @@ export function checkLedger(file, items) {
 
 export function addToLedger(file, items) {
   const led = read(file);
-  const seen = new Set(led.sent.map((x) => x.id));
+  const byId = new Map(led.sent.map((x) => [x.id, x]));
   for (const it of items) {
     const id = idOf(it);
-    if (id && !seen.has(id)) { led.sent.push({ ...it, id }); seen.add(id); }
+    if (!id) continue;
+    const prev = byId.get(id);
+    if (prev) {
+      // Re-send of a repost: refresh the record (newest send date wins) but keep the
+      // original date as first_date so "how long has this been circulating" stays answerable.
+      if (!prev.first_date) prev.first_date = prev.date;
+      if (it.date) prev.date = it.date;
+      if (it.url) prev.url = it.url;
+      if (it.title) prev.title = it.title;
+      if (it.company) prev.company = it.company;
+    } else {
+      const rec = { ...it, id };
+      led.sent.push(rec);
+      byId.set(id, rec);
+    }
   }
-  mkdirSync(dirname(file), { recursive: true });
-  writeFileSync(file, JSON.stringify(led));
+  // Atomic write: this file is the ONLY dedup memory for guests — a crash mid-write
+  // must never truncate it (that would re-send every past job).
+  writeJsonAtomic(file, led, { pretty: 0 }); // compact (jobscout ledger format)
   return led.sent.length;
 }
 

@@ -3,6 +3,7 @@
     "group_id": "<GROUP_ID>@g.us",
     "group_name": "<GROUP_NAME>"
   },
+  "dorTag": "<DOR_MENTION_E164>",
   "session_hygiene": {
     "enabled": true,
     "max_transcript_bytes": 600000,

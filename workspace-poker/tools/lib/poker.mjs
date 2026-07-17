@@ -13,37 +13,46 @@ export function bareE164(s) {
 }
 
 /**
- * Resolve a player from a free-text query (name, id, alias, or e164).
- * Returns the player object or null. Matching is case/space-insensitive and
- * also matches a query that is a substring of a name/alias (so "דני" finds "דני כהן").
+ * Resolve a player from a free-text query (name, id, alias, or e164), with ambiguity detection.
+ * Exact id/name/alias and e164 passes win outright; the substring pass (so "דני" finds "דני כהן")
+ * resolves ONLY when it matches exactly one player. Two players sharing a first name (e.g. two
+ * אופק) must NOT silently resolve to whichever is first in file order — this is a money path.
+ * Returns { player } | { player: null, ambiguous: [players] } | { player: null }.
  */
-export function resolvePlayer(players, query) {
-  if (!query) return null;
+export function resolvePlayerEx(players, query) {
+  if (!query) return { player: null };
   const q = normName(query);
   const qDigits = bareE164(query);
   // 1. exact id / name / alias
   for (const p of players) {
-    if (normName(p.id) === q) return p;
-    if (normName(p.name) === q) return p;
-    if ((p.aliases || []).some((a) => normName(a) === q)) return p;
+    if (normName(p.id) === q) return { player: p };
+    if (normName(p.name) === q) return { player: p };
+    if ((p.aliases || []).some((a) => normName(a) === q)) return { player: p };
   }
   // 2. e164 match
   if (qDigits.length >= 6) {
     for (const p of players) {
-      if ((p.e164 || []).some((e) => bareE164(e) === qDigits)) return p;
+      if ((p.e164 || []).some((e) => bareE164(e) === qDigits)) return { player: p };
     }
   }
-  // 3. substring on name/alias (q inside, or name inside q)
-  for (const p of players) {
+  // 3. substring on name/alias (q inside, or name inside q) — unique match only
+  const subs = players.filter((p) => {
     const hay = [p.name, p.id, ...(p.aliases || [])].map(normName);
-    if (hay.some((h) => h && (h.includes(q) || q.includes(h)))) return p;
-  }
-  return null;
+    return hay.some((h) => h && (h.includes(q) || q.includes(h)));
+  });
+  if (subs.length === 1) return { player: subs[0] };
+  if (subs.length > 1) return { player: null, ambiguous: subs };
+  return { player: null };
 }
 
-/** The "current" session = newest session whose status is not "closed". null if none. */
+/** Back-compat wrapper: player object or null (null also when ambiguous). */
+export function resolvePlayer(players, query) {
+  return resolvePlayerEx(players, query).player;
+}
+
+/** The "current" session = newest session that is neither closed nor cancelled. null if none. */
 export function currentSession(sessions) {
-  const open = sessions.filter((s) => s.status !== "closed");
+  const open = sessions.filter((s) => s.status !== "closed" && s.status !== "cancelled");
   if (!open.length) return null;
   // newest by date then by created timestamp
   return open.slice().sort((a, b) => cmpStr(b.date, a.date) || cmpStr(b.created, a.created))[0];

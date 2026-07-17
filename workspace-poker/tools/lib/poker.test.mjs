@@ -142,3 +142,29 @@ test("newSession / ensureEntry / setRsvp", () => {
   assert.deepEqual(s.rsvp.in, []);
   assert.deepEqual(s.rsvp.out, ["david"]);
 });
+
+test("resolvePlayerEx: ambiguous substring is refused (money path), exact still wins", async () => {
+  const { resolvePlayerEx } = await import("./poker.mjs");
+  const two = [
+    { id: "dani-c", name: "דני כהנוב", e164: [], aliases: [] },
+    { id: "dani-l", name: "דני לוינסון", e164: [], aliases: [] },
+  ];
+  const r = resolvePlayerEx(two, "דני");
+  assert.equal(r.player, null);
+  assert.equal(r.ambiguous.length, 2);
+  // full name / id still resolves uniquely
+  assert.equal(resolvePlayerEx(two, "דני כהנוב").player.id, "dani-c");
+  assert.equal(resolvePlayerEx(two, "dani-l").player.id, "dani-l");
+  // back-compat wrapper returns null on ambiguity, not an arbitrary first match
+  assert.equal(resolvePlayer(two, "דני"), null);
+});
+
+test("currentSession: skips cancelled sessions (stale planned night can't swallow buy-ins)", () => {
+  const sessions = [
+    { id: "a", date: "2026-06-22", status: "cancelled", created: "1" },
+    { id: "b", date: "2026-06-26", status: "cancelled", created: "2" },
+    { id: "c", date: "2026-07-04", status: "planned", created: "3" },
+  ];
+  assert.equal(currentSession(sessions).id, "c");
+  assert.equal(currentSession(sessions.slice(0, 2)), null);
+});

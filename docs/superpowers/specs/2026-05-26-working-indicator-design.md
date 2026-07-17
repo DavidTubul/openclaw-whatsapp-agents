@@ -57,7 +57,7 @@ Two edits, both in `workspace/skills/job-scout/`:
 
 Command (target = `group_id` from `workspace/.config/job-scout.json`):
 ```
-/home/davidtobol2580/open_claw/openclaw message react \
+~/open_claw/openclaw message react \
   --channel whatsapp --target "<group_id>" --message-id "<inbound_msg_id>" --emoji "👀"
 ```
 Replace `👀` with `✅` for the completion reaction.

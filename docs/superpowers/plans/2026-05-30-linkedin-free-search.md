@@ -65,7 +65,7 @@ test('canonicalJobUrl builds a stable view URL', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: FAIL — `Cannot find module './linkedin.mjs'` / export not found.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -103,12 +103,12 @@ export function canonicalJobUrl(id) {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: PASS (3 tests).
 
 - [ ] **Step 5: Checkpoint**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: all pass. (Git commit message if/when git exists: `feat(linkedin): add buildSearchUrl + canonicalJobUrl helpers`)
 
 ---
@@ -181,7 +181,7 @@ test('parseCards returns [] for empty/garbage input', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: FAIL — `parseCards` is not exported.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -232,7 +232,7 @@ function decodeEntities(s) {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: PASS (all tests so far).
 
 - [ ] **Step 5: Checkpoint**
@@ -279,7 +279,7 @@ test('missing/invalid last_run falls back to the cap', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: FAIL — `incrementalWindowSeconds` not exported.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -301,7 +301,7 @@ export function incrementalWindowSeconds(lastRun, today) {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: PASS.
 
 - [ ] **Step 5: Checkpoint**
@@ -337,7 +337,7 @@ test('isClosedHtml returns false for an open posting', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: FAIL — `isClosedHtml` not exported.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -376,7 +376,7 @@ export function checkLinkedInOpen(url) {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: PASS. (`checkLinkedInOpen` itself is network I/O, exercised in the Task 9 e2e — only `isClosedHtml` is unit-tested.)
 
 - [ ] **Step 5: Checkpoint**
@@ -419,7 +419,7 @@ test('pruneSeen dedupes and keeps the most recent max ids', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: FAIL — helpers not exported.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -447,7 +447,7 @@ export function pruneSeen(ids, max = 5000) {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: PASS.
 
 - [ ] **Step 5: Checkpoint**
@@ -488,14 +488,14 @@ import {
 const execFileP = promisify(execFile);
 
 const SOURCES_PATHS = [
-  '/home/davidtobol2580/open_claw/workspace/skills/job-scout/sources.json',
-  '/home/davidtobol2580/.openclaw/agents/main/skills/job-scout/sources.json',
+  '~/open_claw/workspace/skills/job-scout/sources.json',
+  '~/.openclaw/agents/main/skills/job-scout/sources.json',
 ];
 const LOCATIONS_PATHS = [
-  '/home/davidtobol2580/open_claw/workspace/skills/job-scout/allowed-locations.json',
-  '/home/davidtobol2580/.openclaw/agents/main/skills/job-scout/allowed-locations.json',
+  '~/open_claw/workspace/skills/job-scout/allowed-locations.json',
+  '~/.openclaw/agents/main/skills/job-scout/allowed-locations.json',
 ];
-const STATE_PATH = '/home/davidtobol2580/open_claw/workspace/data/linkedin-seen.json';
+const STATE_PATH = '~/open_claw/workspace/data/linkedin-seen.json';
 
 const DEFAULT_KEYWORDS = [
   'QA Automation Team Lead', 'QA Team Lead', 'Automation Team Lead',
@@ -642,27 +642,27 @@ main().catch((e) => fail(e?.message || e));
 
 - [ ] **Step 2: First run (backfill) — manual verification**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node linkedin.mjs | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log('ok',j.ok,'count',j.count);console.log((j.candidates||[]).slice(0,8).map(c=>c.title+' | '+c.company+' | '+c.location).join('\n'));})"`
+Run: `cd ~/open_claw/workspace/tools && node linkedin.mjs | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log('ok',j.ok,'count',j.count);console.log((j.candidates||[]).slice(0,8).map(c=>c.title+' | '+c.company+' | '+c.location).join('\n'));})"`
 Expected: `ok true`, `count > 0`, and the sample shows center-Israel / Tel-Aviv-District / Remote-IL roles only (no Jerusalem / Haifa / Be'er Sheva). Team Lead + Senior + Mid titles appear.
 
 - [ ] **Step 3: Verify state file written**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node -e "const s=require('./data/linkedin-seen.json');console.log('backfilled',s.backfilled,'last_run',s.last_run,'seen',s.seen_ids.length)"`
+Run: `cd ~/open_claw/workspace && node -e "const s=require('./data/linkedin-seen.json');console.log('backfilled',s.backfilled,'last_run',s.last_run,'seen',s.seen_ids.length)"`
 Expected: `backfilled true`, today's date, `seen > 0`.
 
 - [ ] **Step 4: Second run (incremental early-stop) — manual verification**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node linkedin.mjs | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log('ok',j.ok,'count',j.count);})"`
+Run: `cd ~/open_claw/workspace/tools && node linkedin.mjs | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log('ok',j.ok,'count',j.count);})"`
 Expected: `ok true`, `count` is ~0 (everything already in the ledger) and the run is noticeably faster — proves incremental early-stop + ledger dedup.
 
 - [ ] **Step 5: Verify location filter cuts blocked cities**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node -e "const{buildLocationFilter,evaluateLocation}=await import('./lib/location-filter.mjs');const loc=JSON.parse(require('fs').readFileSync('../skills/job-scout/allowed-locations.json'));const f=buildLocationFilter(loc);for(const t of['X at Y — Petah Tikva, Center District, Israel','X at Y — Haifa, Israel','X at Y — Ramat Gan, Tel Aviv District, Israel','X at Y — Tel Aviv District, Israel']){console.log(evaluateLocation(t,f).keep, t)}" --input-type=module 2>/dev/null || cd /home/davidtobol2580/open_claw/workspace/tools && node --input-type=module -e "import{buildLocationFilter,evaluateLocation}from'./lib/location-filter.mjs';import{readFileSync}from'node:fs';const loc=JSON.parse(readFileSync('../skills/job-scout/allowed-locations.json'));const f=buildLocationFilter(loc);for(const t of ['Petah Tikva, Center District, Israel','Haifa, Israel','Ramat Gan, Tel Aviv District, Israel','Tel Aviv District, Israel'])console.log(evaluateLocation(t,f).keep, t)"`
+Run: `cd ~/open_claw/workspace/tools && node -e "const{buildLocationFilter,evaluateLocation}=await import('./lib/location-filter.mjs');const loc=JSON.parse(require('fs').readFileSync('../skills/job-scout/allowed-locations.json'));const f=buildLocationFilter(loc);for(const t of['X at Y — Petah Tikva, Center District, Israel','X at Y — Haifa, Israel','X at Y — Ramat Gan, Tel Aviv District, Israel','X at Y — Tel Aviv District, Israel']){console.log(evaluateLocation(t,f).keep, t)}" --input-type=module 2>/dev/null || cd ~/open_claw/workspace/tools && node --input-type=module -e "import{buildLocationFilter,evaluateLocation}from'./lib/location-filter.mjs';import{readFileSync}from'node:fs';const loc=JSON.parse(readFileSync('../skills/job-scout/allowed-locations.json'));const f=buildLocationFilter(loc);for(const t of ['Petah Tikva, Center District, Israel','Haifa, Israel','Ramat Gan, Tel Aviv District, Israel','Tel Aviv District, Israel'])console.log(evaluateLocation(t,f).keep, t)"`
 Expected: `false Petah Tikva...`, `false Haifa...`, `true Ramat Gan...`, `true Tel Aviv District...`.
 
 - [ ] **Step 6: Checkpoint**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: all unit tests pass; manual runs above behaved as expected. (Commit msg: `feat(linkedin): add linkedin.mjs guest-endpoint scout tool`)
 
 ---
@@ -705,22 +705,22 @@ And DELETE the loop that appends them (lines ~208-211):
 
 - [ ] **Step 3: Verify search.mjs still parses and runs**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --check search.mjs && echo "syntax OK"`
+Run: `cd ~/open_claw/workspace/tools && node --check search.mjs && echo "syntax OK"`
 Expected: `syntax OK` (no LinkedIn references remain except the import + the trailing validation block, which is now harmless dead code on Tavily results).
 
 - [ ] **Step 4: Confirm no LinkedIn queries are emitted**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && grep -n "site:linkedin\|LINKEDIN_KEYWORDS\|function checkLinkedInOpen" search.mjs || echo "none found (good)"`
+Run: `cd ~/open_claw/workspace/tools && grep -n "site:linkedin\|LINKEDIN_KEYWORDS\|function checkLinkedInOpen" search.mjs || echo "none found (good)"`
 Expected: `none found (good)`.
 
 - [ ] **Step 5: Smoke-run search.mjs (Tavily boards still work)**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node search.mjs | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log('ok',j.ok,'count',j.count); console.log('linkedin urls:',(j.candidates||[]).filter(c=>/linkedin/.test(c.url)).length)})"`
+Run: `cd ~/open_claw/workspace/tools && node search.mjs | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log('ok',j.ok,'count',j.count); console.log('linkedin urls:',(j.candidates||[]).filter(c=>/linkedin/.test(c.url)).length)})"`
 Expected: `ok true`, some `count` from the Israeli boards, and `linkedin urls: 0` (LinkedIn no longer comes from Tavily).
 
 - [ ] **Step 6: Checkpoint**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs && node --check search.mjs && echo OK`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs && node --check search.mjs && echo OK`
 Expected: tests pass + `OK`. (Commit msg: `refactor(search): drop LinkedIn-via-Tavily, share checkLinkedInOpen`)
 
 ---
@@ -786,12 +786,12 @@ If you want the config's `location` to be authoritative, in `workspace/tools/lin
 
 - [ ] **Step 3: Verify JSON is valid**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node -e "const s=require('./skills/job-scout/sources.json');console.log('tavily queries:',s.tavily.queries.length,'| linkedin keywords:',s.linkedin.keywords.length); if(JSON.stringify(s).includes('linkedin.com'))throw new Error('site:linkedin still present');console.log('no site:linkedin query OK')"`
+Run: `cd ~/open_claw/workspace && node -e "const s=require('./skills/job-scout/sources.json');console.log('tavily queries:',s.tavily.queries.length,'| linkedin keywords:',s.linkedin.keywords.length); if(JSON.stringify(s).includes('linkedin.com'))throw new Error('site:linkedin still present');console.log('no site:linkedin query OK')"`
 Expected: `tavily queries: 12 | linkedin keywords: 10`, `no site:linkedin query OK`.
 
 - [ ] **Step 4: Verify linkedin.mjs picks up config keywords**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node -e "const s=require('../skills/job-scout/sources.json');console.log(Array.isArray(s.linkedin.keywords)&&s.linkedin.keywords.includes('QA Team Lead')?'config keywords wired OK':'MISSING')"`
+Run: `cd ~/open_claw/workspace/tools && node -e "const s=require('../skills/job-scout/sources.json');console.log(Array.isArray(s.linkedin.keywords)&&s.linkedin.keywords.includes('QA Team Lead')?'config keywords wired OK':'MISSING')"`
 Expected: `config keywords wired OK`.
 
 - [ ] **Step 5: Checkpoint**
@@ -813,7 +813,7 @@ In `workspace/skills/job-scout/prompt-scout.md`, immediately AFTER the Step 1 bl
 ## Step 1a — LinkedIn (free public guest endpoint)
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools && node linkedin.mjs
+cd ~/open_claw/workspace/tools && node linkedin.mjs
 ```
 This outputs `{"ok":true,"count":N,"candidates":[{source:"linkedin",title,company,location,url,snippet,score,query}]}` in the **same shape** as Step 1. It pulls jobs straight from LinkedIn's public guest endpoint (no login/API key/payment). **First run = full backfill** (30 days, all matching open jobs); **later runs = incremental** (adaptive window, only new jobs) thanks to its own `data/linkedin-seen.json` ledger. **Merge these candidates into the same list** as the Step 1 Tavily candidates before scoring.
 
@@ -826,13 +826,13 @@ In `workspace/skills/job-scout/prompt-scout.md`, Step 2's first line about mergi
 
 - [ ] **Step 3: Verify the doc edits**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/skills/job-scout && grep -n "Step 1a — LinkedIn\|node linkedin.mjs" prompt-scout.md`
+Run: `cd ~/open_claw/workspace/skills/job-scout && grep -n "Step 1a — LinkedIn\|node linkedin.mjs" prompt-scout.md`
 Expected: both lines found, the `node linkedin.mjs` line under the new Step 1a.
 
 - [ ] **Step 4: Checkpoint**
 
 Confirm the doc reads top-to-bottom with Step 1 → 1a → 1b → 1c → 2 in order:
-Run: `cd /home/davidtobol2580/open_claw/workspace/skills/job-scout && grep -n "^## Step" prompt-scout.md`
+Run: `cd ~/open_claw/workspace/skills/job-scout && grep -n "^## Step" prompt-scout.md`
 Expected: Steps appear in order including `## Step 1a — LinkedIn`. (Commit msg: `docs(scout): add LinkedIn Step 1a to the daily pipeline`)
 
 ---
@@ -844,14 +844,14 @@ Expected: Steps appear in order including `## Step 1a — LinkedIn`. (Commit msg
 
 - [ ] **Step 1: Full unit suite**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
+Run: `cd ~/open_claw/workspace/tools && node --test lib/linkedin.test.mjs`
 Expected: all tests pass (Tasks 1-5).
 
 - [ ] **Step 2: End-to-end dry pipeline (LinkedIn → location-filtered candidates)**
 
 Run (re-trigger a fresh backfill to see real volume, then confirm incremental):
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools
+cd ~/open_claw/workspace/tools
 rm -f ../data/linkedin-seen.json
 echo "--- backfill ---"; node linkedin.mjs | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log('count',j.count)})"
 echo "--- incremental (should be ~0, fast) ---"; time node linkedin.mjs | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const j=JSON.parse(s);console.log('count',j.count)})"
@@ -883,7 +883,7 @@ node tools/linkedin.mjs                          # LinkedIn jobs (free, no auth)
 
 - [ ] **Step 5: Final verification**
 
-Run: `cd /home/davidtobol2580/open_claw && grep -n "linkedin.mjs" CLAUDE.md && cd workspace/tools && node --test lib/linkedin.test.mjs && echo "ALL GOOD"`
+Run: `cd ~/open_claw && grep -n "linkedin.mjs" CLAUDE.md && cd workspace/tools && node --test lib/linkedin.test.mjs && echo "ALL GOOD"`
 Expected: CLAUDE.md references present, all tests pass, `ALL GOOD`.
 
 - [ ] **Step 6: Checkpoint**

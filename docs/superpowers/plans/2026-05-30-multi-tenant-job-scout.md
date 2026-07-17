@@ -16,7 +16,7 @@
 - **Live bot — do not break it mid-build.** The cron scout (08:00 Asia/Jerusalem) and on-demand WhatsApp Q&A run off these files. Sequencing is **copy-first → update tools/prompts → verify → cleanup-last**, so the old paths keep working until the new ones are proven. **Do NOT restart the gateway** (CLAUDE.md: skills/prompts hot-reload; restarting drops in-flight replies). Avoid running tasks while David is actively chatting.
 - **Two skill locations.** Tools currently fall back to `~/.openclaw/agents/main/skills/job-scout/…`. Source of truth is `workspace/`. After edits, verify the agent picks them up (final task).
 - **Test runner:** `node <file>.test.mjs` (the repo's convention; see existing `*.test.mjs`). Expected pass output ends with `# fail 0`.
-- **All paths absolute.** `WS=/home/davidtobol2580/open_claw/workspace`.
+- **All paths absolute.** `WS=~/open_claw/workspace`.
 
 ---
 
@@ -41,7 +41,7 @@
 - `workspace/skills/job-scout/prompt-qa.md` — 3-case routing; guest/unknown behavior; admin commands
 - `workspace/skills/job-scout/router.md` — owner admin commands + Hebrew NL
 - `workspace/skills/job-scout/SKILL.md` — generalize owner/guests
-- `workspace/CLAUDE.md` (project root `/home/davidtobol2580/open_claw/CLAUDE.md`) — multi-tenant model + cron fix
+- `workspace/CLAUDE.md` (project root `~/open_claw/CLAUDE.md`) — multi-tenant model + cron fix
 
 **Cleanup-last (only after everything verified):** remove the now-duplicated originals
 (`workspace/profile/{cv.pdf,cv-summary.json,profile.md}`, `workspace/profile/yossi/`,
@@ -114,7 +114,7 @@ test('personByE164 disabled guest does not match', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node tools/lib/people.test.mjs`
+Run: `cd ~/open_claw/workspace && node tools/lib/people.test.mjs`
 Expected: FAIL — `Cannot find module './people.mjs'`.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -124,7 +124,7 @@ Create `workspace/tools/lib/people.mjs`:
 // Per-person path & capability resolver — single source of truth for the people registry.
 import { readFileSync } from 'node:fs';
 
-const WORKSPACE = '/home/davidtobol2580/open_claw/workspace';
+const WORKSPACE = '~/open_claw/workspace';
 const REGISTRY_PATH = `${WORKSPACE}/.config/people.json`;
 
 export function loadRegistry() {
@@ -184,7 +184,7 @@ export function sharedConfig(registry = loadRegistry()) {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node tools/lib/people.test.mjs`
+Run: `cd ~/open_claw/workspace && node tools/lib/people.test.mjs`
 Expected: PASS — output ends with `# fail 0`.
 
 - [ ] **Step 5: Checkpoint** — confirm `# fail 0`. No other file references `people.mjs` yet, so the live bot is unaffected.
@@ -250,7 +250,7 @@ test('checkLedger: id present in ledger → already; absent → fresh', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node tools/ledger.test.mjs`
+Run: `cd ~/open_claw/workspace && node tools/ledger.test.mjs`
 Expected: FAIL — `Cannot find module './ledger.mjs'`.
 
 - [ ] **Step 3: Write minimal implementation**
@@ -336,7 +336,7 @@ test('checkLedger flags company/role already sent (by jobId)', () => {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node tools/ledger.test.mjs`
+Run: `cd ~/open_claw/workspace && node tools/ledger.test.mjs`
 Expected: PASS — `# fail 0`.
 
 - [ ] **Step 5: Checkpoint** — confirm `# fail 0`. `ledger.mjs` is not yet referenced by prompts; live bot unaffected.
@@ -384,7 +384,7 @@ Write `workspace/.config/people.json`:
 
 Run:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 mkdir -p people/david/profile people/david/data
 cp profile/cv.pdf profile/cv-summary.json profile/profile.md people/david/profile/
 cp skills/job-scout/sources.json people/david/sources.json
@@ -411,7 +411,7 @@ Edit `workspace/people/david/sources.json` — add a top-level key alongside `ta
 
 Run:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 node -e 'import("./tools/lib/people.mjs").then(m=>{const p=m.resolvePerson("david");console.log(p.id, require("fs").existsSync(p.paths.cvSummary), require("fs").existsSync(p.paths.sources), require("fs").existsSync(p.paths.ledger))})'
 ```
 Expected: `david true true true`.
@@ -456,13 +456,13 @@ In `main()`, replace the `readFirstExisting(...)` lines with:
 
 Run:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace && node tools/search.mjs --person david 2>/tmp/search.err | head -c 200; echo; echo "---stderr---"; head -5 /tmp/search.err
+cd ~/open_claw/workspace && node tools/search.mjs --person david 2>/tmp/search.err | head -c 200; echo; echo "---stderr---"; head -5 /tmp/search.err
 ```
 Expected: JSON `{"ok":true,"count":N,"candidates":[…]}` (N ≥ 0). No "Unknown person" / parse errors.
 
 - [ ] **Step 3: Verify default (no --person) still resolves to david**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node tools/search.mjs 2>/dev/null | head -c 60`
+Run: `cd ~/open_claw/workspace && node tools/search.mjs 2>/dev/null | head -c 60`
 Expected: `{"ok":true,...` (back-compat: old prompt invocation without `--person` keeps working).
 
 - [ ] **Step 4: Checkpoint** — both invocations return `ok:true`. LinkedIn keywords now sourced from `people/david/sources.json`.
@@ -501,14 +501,14 @@ Update `loadState`/`saveState` to use the local `STATE_PATH` (pass it in, or clo
 
 Run:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace && node tools/telegram.mjs fetch --person david 2>/tmp/tg.err | tail -c 200; echo; tail -3 /tmp/tg.err
+cd ~/open_claw/workspace && node tools/telegram.mjs fetch --person david 2>/tmp/tg.err | tail -c 200; echo; tail -3 /tmp/tg.err
 cat people/david/data/telegram-state.json
 ```
 Expected: `{"ok":true,"count":N,...}` and `telegram-state.json` shows `last_seen_id` ≥ 54873 (incremental, not re-fetching all).
 
 - [ ] **Step 3: Verify guest with telegram disabled fails cleanly (handled by prompt)**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node tools/telegram.mjs fetch --person yossi 2>&1 | head -c 120`
+Run: `cd ~/open_claw/workspace && node tools/telegram.mjs fetch --person yossi 2>&1 | head -c 120`
 Expected: `{"ok":false,"error":"No telegram.channels configured for this person"}` (the scout prompt skips Telegram for guest since `telegram:false`).
 
 - [ ] **Step 4: Checkpoint** — David incremental preserved; guest path returns a clean skip signal.
@@ -562,16 +562,16 @@ if (gmailStateFile && maxUid) {
 
 Run:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 rm -f people/david/data/gmail-state.json
 node tools/gmail-search.mjs --person david --days 2 2>/tmp/gm.err | head -c 120; echo
 cat people/david/data/gmail-state.json 2>/dev/null
 ```
-Expected: `{"ok":true,"count":N,...}` and a `gmail-state.json` with `last_uid` (if any mail in window). If env vars missing in this shell, expect the `GMAIL_USER…missing` error — then re-run via the launcher so env loads: `/home/davidtobol2580/open_claw/openclaw …` is not needed (tool reads env); confirm `GMAIL_USER`/`GMAIL_APP_PASSWORD` are exported, else run under the same env the cron uses.
+Expected: `{"ok":true,"count":N,...}` and a `gmail-state.json` with `last_uid` (if any mail in window). If env vars missing in this shell, expect the `GMAIL_USER…missing` error — then re-run via the launcher so env loads: `~/open_claw/openclaw …` is not needed (tool reads env); confirm `GMAIL_USER`/`GMAIL_APP_PASSWORD` are exported, else run under the same env the cron uses.
 
 - [ ] **Step 3: Verify second run is incremental (after-uid from state)**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node tools/gmail-search.mjs --person david 2>/dev/null | head -c 120`
+Run: `cd ~/open_claw/workspace && node tools/gmail-search.mjs --person david 2>/dev/null | head -c 120`
 Expected: `{"ok":true,"count":M,...}` with M ≤ the first count (only mail newer than `last_uid`); often `count:0` if no new mail. State file `last_uid` unchanged or higher.
 
 - [ ] **Step 4: Checkpoint** — incremental Gmail confirmed; ad-hoc `--uid`/`--days`/`--after-uid` still work unchanged.
@@ -618,7 +618,7 @@ test('decideLog marks fromMe when sender == own number (owner/self-chat)', () =>
 
 - [ ] **Step 2: Run to verify it fails**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node tools/hooks/chat-log/handler.test.mjs`
+Run: `cd ~/open_claw/workspace && node tools/hooks/chat-log/handler.test.mjs`
 Expected: FAIL — `d.e164` is `undefined`.
 
 - [ ] **Step 3: Implement sender capture**
@@ -651,8 +651,8 @@ export function decideLog(event, groupId) {
 
 In the default `chatLog` handler, after computing `d`, resolve the person label and write `last-inbound.json` for received messages:
 ```js
-import { personByE164 } from "/home/davidtobol2580/open_claw/workspace/tools/lib/people.mjs";
-const LAST_INBOUND = "/home/davidtobol2580/open_claw/workspace/data/last-inbound.json";
+import { personByE164 } from "~/open_claw/workspace/tools/lib/people.mjs";
+const LAST_INBOUND = "~/open_claw/workspace/data/last-inbound.json";
 // …inside chatLog, after `if (!d.log) return;`
 let label = "Scotty";
 if (d.from === "received") {
@@ -680,7 +680,7 @@ export function formatRecentMd(records, n, maxReply = 600) {
 
 - [ ] **Step 4: Run tests to verify pass**
 
-Run: `cd /home/davidtobol2580/open_claw/workspace && node tools/hooks/chat-log/handler.test.mjs`
+Run: `cd ~/open_claw/workspace && node tools/hooks/chat-log/handler.test.mjs`
 Expected: PASS — `# fail 0` (update any pre-existing assertions that broke due to the label change).
 
 - [ ] **Step 5: Checkpoint** — sender captured, `last-inbound.json` written on inbound, RECENT_CHAT labels by person. Hook still best-effort (never throws).
@@ -699,7 +699,7 @@ Expected: PASS — `# fail 0` (update any pre-existing assertions that broke due
 
 Run:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 mkdir -p people/yossi/profile people/yossi/data
 cp profile/yossi/cv.pdf profile/yossi/cv-summary.json profile/yossi/profile.md people/yossi/profile/
 ls people/yossi/profile
@@ -762,7 +762,7 @@ Write `workspace/people/yossi/allowed-locations.json`:
 
 Run:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace && node tools/search.mjs --person yossi 2>/tmp/ys.err | head -c 200; echo; head -3 /tmp/ys.err
+cd ~/open_claw/workspace && node tools/search.mjs --person yossi 2>/tmp/ys.err | head -c 200; echo; head -3 /tmp/ys.err
 ```
 Expected: `{"ok":true,"count":N,"candidates":[…]}` — candidates location-filtered to guest's allowed cities. (N may be small/0 depending on the day; `ok:true` is the success criterion.)
 
@@ -783,7 +783,7 @@ At the top of the pipeline (after the intro), insert:
 ## Step 0 — Load the people registry and loop
 
 ```bash
-cat /home/davidtobol2580/open_claw/workspace/.config/people.json
+cat ~/open_claw/workspace/.config/people.json
 ```
 Run the full pipeline below **once per enabled person** (`people[].enabled == true`). For each person `P`:
 - profile/CV: `cat workspace/people/<P.id>/profile/cv-summary.json`
@@ -850,8 +850,8 @@ Insert a new first section after the intro:
 ## Step 0 — Identify the sender (route to the right person)
 
 ```bash
-cat /home/davidtobol2580/open_claw/workspace/data/last-inbound.json 2>/dev/null
-cat /home/davidtobol2580/open_claw/workspace/.config/people.json
+cat ~/open_claw/workspace/data/last-inbound.json 2>/dev/null
+cat ~/open_claw/workspace/.config/people.json
 ```
 Resolve the sender to a person:
 - `last-inbound.person` is set → use that person.
@@ -897,7 +897,7 @@ Add to `workspace/skills/job-scout/router.md` a section:
 
 **Files:**
 - Modify: `workspace/skills/job-scout/SKILL.md`
-- Modify: `/home/davidtobol2580/open_claw/CLAUDE.md`
+- Modify: `~/open_claw/CLAUDE.md`
 - Modify: `workspace/.config/job-scout.json` (cron drift)
 
 - [ ] **Step 1: Generalize SKILL.md**
@@ -919,7 +919,7 @@ Add to `workspace/skills/job-scout/router.md` a section:
 
 Reconcile the schedule. Confirm the real cron:
 ```bash
-/home/davidtobol2580/open_claw/openclaw cron list 2>/dev/null | head -20
+~/open_claw/openclaw cron list 2>/dev/null | head -20
 ```
 Set `workspace/.config/job-scout.json` `schedule_cron` and the CLAUDE.md/SKILL.md references to match the actual cron time (runs at 08:00 Asia/Jerusalem per `data/runs/*` = 05:00Z). If the intended time is 09:00, fix the cron via `openclaw cron edit <id>` instead and align docs. (Confirm intended time with David if ambiguous.)
 
@@ -935,7 +935,7 @@ Set `workspace/.config/job-scout.json` `schedule_cron` and the CLAUDE.md/SKILL.m
 
 Run:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 for t in tools/lib/people.test.mjs tools/ledger.test.mjs tools/jobkey.test.mjs tools/lib/location-filter.test.mjs tools/session-hygiene.test.mjs tools/hooks/chat-log/handler.test.mjs tools/hooks/ack-react/handler.test.mjs; do
   echo -n "$t -> "; node "$t" 2>&1 | grep -E '^# (pass|fail)' | tr '\n' ' '; echo
 done
@@ -946,7 +946,7 @@ Expected: every line ends `# fail 0`.
 
 Run:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 node tools/sheet.mjs ping
 node tools/search.mjs --person david 2>/dev/null | head -c 60; echo
 node tools/search.mjs --person yossi 2>/dev/null | head -c 60; echo
@@ -958,7 +958,7 @@ Expected: sheet `{"ok":true,…}`; both searches `{"ok":true,…}`; ledger `{"al
 
 Simulate inbound from guest and confirm last-inbound + resolution:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 node -e '
 import("./tools/hooks/chat-log/handler.js").then(async m=>{
   await m.default({type:"message",action:"received",context:{channelId:"whatsapp",conversationId:"120363000000000000@g.us",content:"היי",metadata:{senderE164:"972500000000",to:"972500000000"}}});
@@ -969,7 +969,7 @@ Expected: `last-inbound: {"e164":"972500000000","fromMe":false,"person":"yossi",
 
 - [ ] **Step 4: Verify the agent uses the workspace skill copy**
 
-Run: `cat /home/davidtobol2580/open_claw/workspace/skills/job-scout/.openclaw/source-origin.json` and confirm whether a synced copy exists at `~/.openclaw/agents/main/skills/job-scout/`. If so, confirm it hot-reloads from workspace (per CLAUDE.md) or re-sync per the project's mechanism. Do NOT restart the gateway.
+Run: `cat ~/open_claw/workspace/skills/job-scout/.openclaw/source-origin.json` and confirm whether a synced copy exists at `~/.openclaw/agents/main/skills/job-scout/`. If so, confirm it hot-reloads from workspace (per CLAUDE.md) or re-sync per the project's mechanism. Do NOT restart the gateway.
 
 - [ ] **Step 5: Live smoke (with David, not mid-conversation)**
 
@@ -979,7 +979,7 @@ Ask David to send `/people` in the group → expect a Hebrew list (david/owner/e
 
 Run:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 # keep backups one more cycle; move originals aside rather than hard-delete
 mkdir -p .pre-multitenant-backup
 mv profile/cv.pdf profile/cv-summary.json profile/profile.md .pre-multitenant-backup/ 2>/dev/null || true

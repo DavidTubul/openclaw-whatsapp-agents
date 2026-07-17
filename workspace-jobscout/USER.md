@@ -1,21 +1,10 @@
 # USER.md - About Your Human
 
-_Learn about the person you're helping. Update this as you go._
-
-- **Name:**
-- **What to call them:**
-- **Pronouns:** _(optional)_
-- **Timezone:**
-- **Notes:**
+- **Name:** David Tubul (דוד)
+- **What to call them:** דוד
+- **Timezone:** Asia/Jerusalem
+- **Notes:** Owner of this job-scout. Head of QA (~5 yrs) looking for **IC** QA/Automation/SDET roles — center-Israel or Remote-IL; no management titles, no junior, no RPA, no defense sector. Hebrew native.
 
 ## Context
 
-_(What do they care about? What projects are they working on? What annoys them? What makes them laugh? Build this over time.)_
-
----
-
-The more you know, the better you can help. But remember — you're learning about a person, not building a dossier. Respect the difference.
-
-## Related
-
-- [Agent workspace](/concepts/agent-workspace)
+David is the **owner** (full pipeline: Sheet + Gmail sync + Telegram). Guests (per `.config/people.json`) get search+push+light Q&A only. Prefers clear Hebrew, dislikes being asked mid-task questions — act with sensible defaults.

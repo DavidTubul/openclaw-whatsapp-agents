@@ -15,7 +15,7 @@ import { spawn } from "node:child_process";
 import { resolve, join, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const WORKSPACE_ROOT = "/home/davidtobol2580/open_claw/workspace-realestate";
+const WORKSPACE_ROOT = fileURLToPath(new URL("../", import.meta.url));
 const CONFIG_PATH = join(WORKSPACE_ROOT, ".config", "bot.json");
 
 /** Build the rclone argv (pure — unit-tested). */

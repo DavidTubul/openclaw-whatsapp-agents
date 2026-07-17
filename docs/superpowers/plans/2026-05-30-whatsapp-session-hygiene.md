@@ -54,9 +54,9 @@ This repo is **not** a git repo (verified), so the "Commit" steps below are writ
 }
 ```
 
-- [ ] **Step 2: Validate.** Run: `node -e "JSON.parse(require('fs').readFileSync('/home/davidtobol2580/open_claw/workspace/.config/job-scout.json','utf8')); console.log('valid')"`
+- [ ] **Step 2: Validate.** Run: `node -e "JSON.parse(require('fs').readFileSync('~/open_claw/workspace/.config/job-scout.json','utf8')); console.log('valid')"`
 Expected: `valid`. Also confirm `.whatsapp.group_id` is still present:
-`node -e "console.log(require('/home/davidtobol2580/open_claw/workspace/.config/job-scout.json').whatsapp.group_id)"` → `120363000000000000@g.us`.
+`node -e "console.log(require('~/open_claw/workspace/.config/job-scout.json').whatsapp.group_id)"` → `120363000000000000@g.us`.
 
 - [ ] **Step 3: Checkpoint.** Config is valid and unchanged except the new block.
 
@@ -129,7 +129,7 @@ test("formatRecentMd renders last N, truncates scotty replies, newest last", () 
 });
 ```
 
-- [ ] **Step 3: Run — expect FAIL.** Run: `cd /home/davidtobol2580/open_claw/workspace/tools/hooks/chat-log && node --test`
+- [ ] **Step 3: Run — expect FAIL.** Run: `cd ~/open_claw/workspace/tools/hooks/chat-log && node --test`
 Expected: FAIL (`handler.js` not found / exports undefined).
 
 - [ ] **Step 4: Implement `handler.js`** (pure fns only for now; default export added in Task 3):
@@ -138,9 +138,9 @@ Expected: FAIL (`handler.js` not found / exports undefined).
 import { readFile, appendFile, writeFile, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
-const CONFIG_PATH = "/home/davidtobol2580/open_claw/workspace/.config/job-scout.json";
-const DATA_DIR = "/home/davidtobol2580/open_claw/workspace/data/chat-log";
-const RECENT_MD = "/home/davidtobol2580/open_claw/workspace/RECENT_CHAT.md";
+const CONFIG_PATH = "~/open_claw/workspace/.config/job-scout.json";
+const DATA_DIR = "~/open_claw/workspace/data/chat-log";
+const RECENT_MD = "~/open_claw/workspace/RECENT_CHAT.md";
 
 /** Should this event be logged, and as whom? Only WhatsApp messages in the configured group with text. */
 export function decideLog(event, groupId) {
@@ -180,7 +180,7 @@ export function formatRecentMd(records, n, maxReply = 600) {
 export { CONFIG_PATH, DATA_DIR, RECENT_MD };
 ```
 
-- [ ] **Step 5: Run — expect PASS.** Run: `cd /home/davidtobol2580/open_claw/workspace/tools/hooks/chat-log && node --test`
+- [ ] **Step 5: Run — expect PASS.** Run: `cd ~/open_claw/workspace/tools/hooks/chat-log && node --test`
 Expected: all tests pass.
 
 - [ ] **Step 6: Checkpoint.** Pure fns green.
@@ -270,21 +270,21 @@ the LLM, so recent context survives session resets (see session-hygiene). Enforc
 - [ ] **Step 4: Smoke-test the side effects with a synthetic event.** Run:
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools/hooks/chat-log
+cd ~/open_claw/workspace/tools/hooks/chat-log
 node -e '
 import("./handler.js").then(async (m) => {
-  const GROUP = require("/home/davidtobol2580/open_claw/workspace/.config/job-scout.json").whatsapp.group_id;
+  const GROUP = require("~/open_claw/workspace/.config/job-scout.json").whatsapp.group_id;
   await m.default({ type:"message", action:"received", context:{ channelId:"whatsapp", conversationId:GROUP, content:"בדיקת chat-log", timestamp:new Date().toISOString(), metadata:{} } });
   console.log("ran");
 });'
-tail -1 "/home/davidtobol2580/open_claw/workspace/data/chat-log/$(node -e "process.stdout.write(require('/home/davidtobol2580/open_claw/workspace/.config/job-scout.json').whatsapp.group_id)").jsonl"
-grep -c "בדיקת chat-log" /home/davidtobol2580/open_claw/workspace/RECENT_CHAT.md
+tail -1 "~/open_claw/workspace/data/chat-log/$(node -e "process.stdout.write(require('~/open_claw/workspace/.config/job-scout.json').whatsapp.group_id)").jsonl"
+grep -c "בדיקת chat-log" ~/open_claw/workspace/RECENT_CHAT.md
 ```
 Expected: `ran`, the record line printed, and grep count `1` (RECENT_CHAT.md regenerated).
 
 - [ ] **Step 5: Clean the smoke-test line** so it doesn't pollute the real log:
 ```bash
-F="/home/davidtobol2580/open_claw/workspace/data/chat-log/$(node -e "process.stdout.write(require('/home/davidtobol2580/open_claw/workspace/.config/job-scout.json').whatsapp.group_id)").jsonl"
+F="~/open_claw/workspace/data/chat-log/$(node -e "process.stdout.write(require('~/open_claw/workspace/.config/job-scout.json').whatsapp.group_id)").jsonl"
 grep -v "בדיקת chat-log" "$F" > "$F.tmp" && mv "$F.tmp" "$F" || rm -f "$F"
 ```
 
@@ -296,12 +296,12 @@ grep -v "בדיקת chat-log" "$F" > "$F.tmp" && mv "$F.tmp" "$F" || rm -f "$F"
 
 **Files:** none (config already points `extraDirs` at `workspace/tools/hooks`).
 
-- [ ] **Step 1: Confirm discovery.** Run: `cd /home/davidtobol2580/open_claw && ./openclaw hooks list 2>&1 | grep -iE "chat-log|ack-react"`
-Expected: both `chat-log` and `ack-react` listed as ready. If `chat-log` is absent, confirm `~/.openclaw/openclaw.json` `hooks.internal.load.extraDirs` includes `/home/davidtobol2580/open_claw/workspace/tools/hooks` (it already does for ack-react; the new pack is a sibling). Do **not** restart the gateway — hooks hot-load.
+- [ ] **Step 1: Confirm discovery.** Run: `cd ~/open_claw && ./openclaw hooks list 2>&1 | grep -iE "chat-log|ack-react"`
+Expected: both `chat-log` and `ack-react` listed as ready. If `chat-log` is absent, confirm `~/.openclaw/openclaw.json` `hooks.internal.load.extraDirs` includes `~/open_claw/workspace/tools/hooks` (it already does for ack-react; the new pack is a sibling). Do **not** restart the gateway — hooks hot-load.
 
 - [ ] **Step 2: Live verify (send David a real test is NOT allowed without his ok).** Instead, verify via the existing inbound flow passively: after the next real group message, confirm a line was appended:
 ```bash
-wc -l "/home/davidtobol2580/open_claw/workspace/data/chat-log/$(node -e "process.stdout.write(require('/home/davidtobol2580/open_claw/workspace/.config/job-scout.json').whatsapp.group_id)").jsonl"
+wc -l "~/open_claw/workspace/data/chat-log/$(node -e "process.stdout.write(require('~/open_claw/workspace/.config/job-scout.json').whatsapp.group_id)").jsonl"
 ```
 Expected: line count grows as messages arrive.
 
@@ -370,7 +370,7 @@ test("decide: daily window but already done today → no reset", () => {
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL.** Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test session-hygiene.test.mjs`
+- [ ] **Step 2: Run — expect FAIL.** Run: `cd ~/open_claw/workspace/tools && node --test session-hygiene.test.mjs`
 Expected: FAIL (module not found).
 
 - [ ] **Step 3: Implement the pure fns in `session-hygiene.mjs`:**
@@ -380,10 +380,10 @@ Expected: FAIL (module not found).
 import { readFile, writeFile, rename, stat } from "node:fs/promises";
 import { execFile } from "node:child_process";
 
-const CONFIG = "/home/davidtobol2580/open_claw/workspace/.config/job-scout.json";
-const STORE = "/home/davidtobol2580/.openclaw/agents/main/sessions/sessions.json";
-const LAUNCHER = "/home/davidtobol2580/open_claw/openclaw";
-const DAILY_MARKER = "/home/davidtobol2580/open_claw/workspace/data/session-hygiene-last-daily";
+const CONFIG = "~/open_claw/workspace/.config/job-scout.json";
+const STORE = "~/.openclaw/agents/main/sessions/sessions.json";
+const LAUNCHER = "~/open_claw/openclaw";
+const DAILY_MARKER = "~/open_claw/workspace/data/session-hygiene-last-daily";
 const KEY_PREFIX = "agent:main:whatsapp:group:";
 
 export function resolveGroupSession(store, key) {
@@ -409,7 +409,7 @@ export function decide({ bytes, maxBytes, idle, inDailyWindow, dailyAlreadyDone 
 export { CONFIG, STORE, LAUNCHER, DAILY_MARKER, KEY_PREFIX };
 ```
 
-- [ ] **Step 4: Run — expect PASS.** Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test session-hygiene.test.mjs`
+- [ ] **Step 4: Run — expect PASS.** Run: `cd ~/open_claw/workspace/tools && node --test session-hygiene.test.mjs`
 Expected: all pass.
 
 - [ ] **Step 5: Checkpoint.** Decision logic green.
@@ -460,7 +460,7 @@ test("performReset: if archive fails, abort BEFORE cleanup (no broken state)", a
 });
 ```
 
-- [ ] **Step 2: Run — expect FAIL.** Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test session-hygiene.test.mjs`
+- [ ] **Step 2: Run — expect FAIL.** Run: `cd ~/open_claw/workspace/tools && node --test session-hygiene.test.mjs`
 Expected: FAIL (`performReset` undefined).
 
 - [ ] **Step 3: Implement `performReset` in `session-hygiene.mjs`** (append before the export line; add `performReset` to exports):
@@ -491,7 +491,7 @@ export { CONFIG, STORE, LAUNCHER, DAILY_MARKER, KEY_PREFIX };
 ```
 (performReset is already exported via `export async function`.)
 
-- [ ] **Step 4: Run — expect PASS.** Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node --test session-hygiene.test.mjs`
+- [ ] **Step 4: Run — expect PASS.** Run: `cd ~/open_claw/workspace/tools && node --test session-hygiene.test.mjs`
 Expected: all pass.
 
 - [ ] **Step 5: Checkpoint.** Reset ordering verified, including the abort-on-failure safety.
@@ -575,10 +575,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 ```
 
-- [ ] **Step 2: Dry-run against the LIVE store (no mutation).** Run: `cd /home/davidtobol2580/open_claw/workspace/tools && node session-hygiene.mjs --dry-run`
+- [ ] **Step 2: Dry-run against the LIVE store (no mutation).** Run: `cd ~/open_claw/workspace/tools && node session-hygiene.mjs --dry-run`
 Expected: a log line like `size=<N>B idle=<bool> dailyWindow=false dailyDone=false → noop (ok (<N>B))` (current transcript is ~10KB, far below 1MB → noop). No files changed.
 
-- [ ] **Step 3: Confirm no mutation.** Run: `ls /home/davidtobol2580/.openclaw/agents/main/sessions/ | grep -c "archived-$(date +%Y%m%d)"` — should reflect only pre-existing archives, none newly created by the dry-run.
+- [ ] **Step 3: Confirm no mutation.** Run: `ls ~/.openclaw/agents/main/sessions/ | grep -c "archived-$(date +%Y%m%d)"` — should reflect only pre-existing archives, none newly created by the dry-run.
 
 - [ ] **Step 4: Checkpoint.** main() reads live state and correctly decides "noop" today.
 
@@ -591,40 +591,40 @@ Validates the real `runCleanupReal` + `performReset` path end-to-end without tou
 - [ ] **Step 1: Create a throwaway session and point a temp config at it.** Run:
 
 ```bash
-cd /home/davidtobol2580/open_claw
+cd ~/open_claw
 ./openclaw agent --session-key diagnostic:hyg-e2e -m "seed" >/dev/null 2>&1
-SID=$(node -e "const s=require('/home/davidtobol2580/.openclaw/agents/main/sessions/sessions.json');console.log(s['agent:main:diagnostic:hyg-e2e'].sessionId)")
+SID=$(node -e "const s=require('~/.openclaw/agents/main/sessions/sessions.json');console.log(s['agent:main:diagnostic:hyg-e2e'].sessionId)")
 echo "throwaway sid=$SID"
 ```
 
 - [ ] **Step 2: Inline reset on that exact transcript** (reuses the real primitive; does NOT use the group key):
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace/tools
+cd ~/open_claw/workspace/tools
 node -e '
 import("./session-hygiene.mjs").then(async (m) => {
-  const SES="/home/davidtobol2580/.openclaw/agents/main/sessions";
+  const SES="~/.openclaw/agents/main/sessions";
   const store=`${SES}/sessions.json`;
   const sid=process.argv[1];
-  const r=await m.performReset({ storePath: store, sessionFile: `${SES}/${sid}.jsonl`, ts:"e2e", runCleanup: () => new Promise(res=>require("child_process").execFile("/home/davidtobol2580/open_claw/openclaw",["sessions","cleanup","--fix-missing","--enforce"],{timeout:60000},(e)=>res({code:e?1:0}))) });
+  const r=await m.performReset({ storePath: store, sessionFile: `${SES}/${sid}.jsonl`, ts:"e2e", runCleanup: () => new Promise(res=>require("child_process").execFile("~/open_claw/openclaw",["sessions","cleanup","--fix-missing","--enforce"],{timeout:60000},(e)=>res({code:e?1:0}))) });
   console.log("reset:", JSON.stringify(r));
 });' "$SID"
-node -e "const s=require('/home/davidtobol2580/.openclaw/agents/main/sessions/sessions.json');console.log('entry present after reset:', 'agent:main:diagnostic:hyg-e2e' in s)"
+node -e "const s=require('~/.openclaw/agents/main/sessions/sessions.json');console.log('entry present after reset:', 'agent:main:diagnostic:hyg-e2e' in s)"
 ```
 Expected: `reset: {"ok":true}` and `entry present after reset: false`.
 
 - [ ] **Step 3: Confirm fresh session on next turn (no restart).** Run:
 ```bash
-cd /home/davidtobol2580/open_claw
+cd ~/open_claw
 ./openclaw agent --session-key diagnostic:hyg-e2e -m "after reset" >/dev/null 2>&1
-node -e "const s=require('/home/davidtobol2580/.openclaw/agents/main/sessions/sessions.json');console.log('new sid:', s['agent:main:diagnostic:hyg-e2e'].sessionId)"
+node -e "const s=require('~/.openclaw/agents/main/sessions/sessions.json');console.log('new sid:', s['agent:main:diagnostic:hyg-e2e'].sessionId)"
 ```
 Expected: a **new** sessionId, different from Step 1's `$SID`.
 
 - [ ] **Step 4: Cleanup throwaway artifacts.** Run:
 ```bash
-cd /home/davidtobol2580/open_claw
-SES=/home/davidtobol2580/.openclaw/agents/main/sessions
+cd ~/open_claw
+SES=~/.openclaw/agents/main/sessions
 rm -f "$SES"/*.archived-e2e
 NEW=$(node -e "const s=require('$SES/sessions.json');const e=s['agent:main:diagnostic:hyg-e2e'];process.stdout.write(e?e.sessionId:'')")
 [ -n "$NEW" ] && rm -f "$SES/$NEW.jsonl"
@@ -635,7 +635,7 @@ Expected: `throwaway entry removed`; no e2e artifacts remain.
 
 - [ ] **Step 5: Verify the group session is untouched.** Run:
 ```bash
-node -e "const s=require('/home/davidtobol2580/.openclaw/agents/main/sessions/sessions.json');const g=s['agent:main:whatsapp:group:120363000000000000@g.us'];console.log('group intact:', !!g, g&&g.sessionId)"
+node -e "const s=require('~/.openclaw/agents/main/sessions/sessions.json');const g=s['agent:main:whatsapp:group:120363000000000000@g.us'];console.log('group intact:', !!g, g&&g.sessionId)"
 ```
 Expected: `group intact: true <sid>`.
 
@@ -658,9 +658,9 @@ Description=OpenClaw WhatsApp session hygiene (size/daily reset, idle-gated, res
 [Service]
 Type=oneshot
 TimeoutStartSec=120
-ExecStart=/home/davidtobol2580/.nvm/versions/node/v22.22.3/bin/node /home/davidtobol2580/open_claw/workspace/tools/session-hygiene.mjs
+ExecStart=~/.nvm/versions/node/v22.22.3/bin/node ~/open_claw/workspace/tools/session-hygiene.mjs
 ```
-(Confirm the node path: `which node` under nvm 22 = `/home/davidtobol2580/.nvm/versions/node/v22.22.3/bin/node`. If different, use that path.)
+(Confirm the node path: `which node` under nvm 22 = `~/.nvm/versions/node/v22.22.3/bin/node`. If different, use that path.)
 
 - [ ] **Step 2: Create the timer** `openclaw-session-hygiene.timer`:
 
@@ -707,7 +707,7 @@ Expected: a `[session-hygiene …] size=…B … → noop` line, no errors.
 ## Recent context (read FIRST — continuity across session resets)
 
 Your session is periodically reset to stay fresh, so do NOT assume you remember earlier turns.
-**Before replying, read `/home/davidtobol2580/open_claw/workspace/RECENT_CHAT.md`** — it holds the
+**Before replying, read `~/open_claw/workspace/RECENT_CHAT.md`** — it holds the
 last ~30 exchanges with David (maintained by the chat-log hook, survives resets). Use it for
 continuity ("what were we just talking about"). The Google Sheet remains the source of truth for
 job/application data; RECENT_CHAT.md is only for conversational context.
@@ -715,8 +715,8 @@ job/application data; RECENT_CHAT.md is only for conversational context.
 
 - [ ] **Step 2: Confirm the file is referenced and exists.** Run:
 ```bash
-grep -q "RECENT_CHAT.md" /home/davidtobol2580/open_claw/workspace/skills/job-scout/prompt-qa.md && echo "referenced"
-ls -la /home/davidtobol2580/open_claw/workspace/RECENT_CHAT.md
+grep -q "RECENT_CHAT.md" ~/open_claw/workspace/skills/job-scout/prompt-qa.md && echo "referenced"
+ls -la ~/open_claw/workspace/RECENT_CHAT.md
 ```
 Expected: `referenced` and the file exists.
 

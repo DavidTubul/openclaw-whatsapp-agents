@@ -45,3 +45,14 @@ test('checkLedger on a non-existent ledger file → everything fresh', () => {
   assert.deepEqual(res.already, []);
   assert.equal(res.fresh.length, 1);
 });
+
+test('addToLedger upserts existing id: refreshes date, preserves first_date', () => {
+  const file = tmpLedger(); // follow the file's existing tmp-file helper pattern
+  addToLedger(file, [{ company: 'Wix', role: 'QA Automation Engineer', url: 'u1', title: 'QA Automation Engineer', date: '2026-06-01' }]);
+  addToLedger(file, [{ company: 'Wix', role: 'QA Automation Engineer', url: 'u2', title: 'QA Automation Engineer', date: '2026-07-15' }]);
+  const led = JSON.parse(readFileSync(file, 'utf8'));
+  assert.equal(led.sent.length, 1);
+  assert.equal(led.sent[0].date, '2026-07-15');
+  assert.equal(led.sent[0].first_date, '2026-06-01');
+  assert.equal(led.sent[0].url, 'u2');
+});

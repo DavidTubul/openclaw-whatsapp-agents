@@ -4,8 +4,18 @@ import {
   buildSearchUrl, canonicalJobUrl, parseCards, incrementalWindowSeconds,
   BACKFILL_WINDOW, FRESH_WINDOW, isClosedHtml, filterNewCandidates, pruneSeen,
   titleSignalsAutomation, jdSignalsAutomation, titleHardExcluded,
-  resolveScanWindow, vetVerdict,
+  resolveScanWindow, vetVerdict, looksLikeJobPage, companyIsJuniorExempt,
+  extractDatePosted,
 } from './linkedin.mjs';
+
+// A minimal REAL job-view page: carries the posting-body markers looksLikeJobPage keys off,
+// so the closed/manual-only vets actually run on it. `body` is the JD text under test.
+const jobPage = (body = '') =>
+  `<div class="top-card-layout__title">Some Role</div>` +
+  `<div class="show-more-less-html"><div class="description__text">${body}</div></div>`;
+// A rate-limit / login wall: non-empty, no posting-body markers (this is what starved recall).
+const AUTHWALL = '<html><body><div class="authwall">Join LinkedIn — sign in to view this job</div>'
+  + ' <a href="/checkpoint/lg/login">Sign in</a></body></html>';
 
 test('buildSearchUrl encodes keyword, location, window, start', () => {
   const url = buildSearchUrl({ keyword: 'QA Automation', location: 'Israel', tprSeconds: 604800, start: 25 });
@@ -80,10 +90,60 @@ test('titleHardExcluded[the guest: junior-only]: keeps PM + management, drops on
   assert.equal(titleHardExcluded('Head of PMO', RANI), '');                 // management NOT applied
   assert.equal(titleHardExcluded('Senior Program Manager', RANI), '');
   assert.equal(titleHardExcluded('Junior Program Manager', RANI), 'junior'); // junior still dropped
+  // no junior_exempt_big_companies key → old behavior even when a company IS passed
+  assert.equal(titleHardExcluded('Junior Program Manager', RANI, 'Microsoft'), 'junior');
 });
 
-test('FRESH_WINDOW caps the backfill window to ~1 week (last-week rule)', () => {
-  assert.equal(FRESH_WINDOW, 604800);
+// David's filter WITH the big-company junior exemption (2026-07-13 policy).
+const DAVID_EXEMPT = {
+  ...DAVID,
+  junior_exempt_big_companies: ['Microsoft', 'Google', 'NVIDIA', 'Check Point', 'Wix', 'Via', 'Monday'],
+};
+
+test('titleHardExcluded[junior exemption]: junior at a BIG company → KEPT; unknown startup → dropped', () => {
+  // the policy: "בחברות גדולות מבחינתי זה בסדר גם משרות ג'וניור"
+  assert.equal(titleHardExcluded('Junior QA Automation Engineer', DAVID_EXEMPT, 'Microsoft'), '');
+  assert.equal(titleHardExcluded('Junior QA Engineer', DAVID_EXEMPT, 'Microsoft Israel R&D'), ''); // suffix-tolerant
+  assert.equal(titleHardExcluded('QA Engineer (Entry Level)', DAVID_EXEMPT, 'Google'), '');
+  assert.equal(titleHardExcluded('Junior Test Automation Engineer', DAVID_EXEMPT, 'Check Point Software Technologies'), '');
+  // NOT exempt: unknown startup / empty company / no match → still hard-dropped
+  assert.equal(titleHardExcluded('Junior QA Automation Engineer', DAVID_EXEMPT, 'StealthStartup Ltd'), 'junior');
+  assert.equal(titleHardExcluded('Junior QA Automation Engineer', DAVID_EXEMPT, ''), 'junior');
+  assert.equal(titleHardExcluded('Junior QA Automation Engineer', DAVID_EXEMPT), 'junior');
+});
+
+test('titleHardExcluded[junior exemption]: internships ALWAYS dropped, even at a big company', () => {
+  assert.equal(titleHardExcluded('QA Intern', DAVID_EXEMPT, 'Microsoft'), 'internship');
+  assert.equal(titleHardExcluded('Software Testing Internship', DAVID_EXEMPT, 'Google'), 'internship');
+  assert.equal(titleHardExcluded('Student QA Position', DAVID_EXEMPT, 'NVIDIA'), 'internship');
+  assert.equal(titleHardExcluded('QA Trainee', DAVID_EXEMPT, 'Check Point'), 'internship');
+});
+
+test('titleHardExcluded[junior exemption]: non-junior buckets unaffected by company', () => {
+  assert.equal(titleHardExcluded('QA Manager', DAVID_EXEMPT, 'Microsoft'), 'management');
+  assert.equal(titleHardExcluded('GTM Engineer', DAVID_EXEMPT, 'Microsoft'), 'off-field');
+  assert.equal(titleHardExcluded('Senior QA Engineer', DAVID_EXEMPT, 'StealthStartup Ltd'), '');
+});
+
+test('companyIsJuniorExempt: word match, suffix-tolerant, case-insensitive, no substring bleed', () => {
+  const list = ['Microsoft', 'Via', 'Monday', 'Check Point'];
+  assert.equal(companyIsJuniorExempt('Microsoft', list), true);
+  assert.equal(companyIsJuniorExempt('Microsoft Israel R&D', list), true);
+  assert.equal(companyIsJuniorExempt('microsoft', list), true);
+  assert.equal(companyIsJuniorExempt('Monday.com', list), true);       // dot boundary handled
+  assert.equal(companyIsJuniorExempt('Check Point Software Technologies', list), true);
+  assert.equal(companyIsJuniorExempt('Via Transportation', list), true);
+  // NOT matches: substring inside another word, empty/absent inputs
+  assert.equal(companyIsJuniorExempt('Aviva', list), false);            // "Via" must not fire inside a word
+  assert.equal(companyIsJuniorExempt('Microsoftly Inc', list), false);
+  assert.equal(companyIsJuniorExempt('SomeStartup', list), false);
+  assert.equal(companyIsJuniorExempt('', list), false);
+  assert.equal(companyIsJuniorExempt('Microsoft', []), false);
+  assert.equal(companyIsJuniorExempt('Microsoft', null), false);
+});
+
+test('FRESH_WINDOW caps the backfill window to ~2 weeks (recency ceiling)', () => {
+  assert.equal(FRESH_WINDOW, 14 * 86400); // widened 7→14d (2026-06-29) to close the deep-scan gap
   assert.equal(Math.min(BACKFILL_WINDOW, FRESH_WINDOW), FRESH_WINDOW);
 });
 
@@ -115,18 +175,42 @@ test('resolveScanWindow: incremental → capped, early-stop pages', () => {
 
 test('vetVerdict: fail-open on empty html; drop a closed posting', () => {
   assert.equal(vetVerdict({ title: 'x', html: '', automationVet: true }).keep, true);
-  assert.equal(vetVerdict({ title: 'x', html: 'No longer accepting applications', automationVet: true }).keep, false);
+  // closed check only fires on a REAL job page (marker present) that also says "No longer accepting"
+  assert.equal(vetVerdict({ title: 'x', html: jobPage('No longer accepting applications'), automationVet: true }).keep, false);
+  assert.equal(vetVerdict({ title: 'x', html: jobPage('No longer accepting applications'), automationVet: true }).why, 'closed');
 });
 
-test('vetVerdict[David, automationVet on]: manual-QA JD dropped, automation JD kept', () => {
-  assert.deepEqual(vetVerdict({ title: 'QA Engineer', html: 'manual test cases only', automationVet: true }), { keep: false, why: 'manual-only' });
-  assert.equal(vetVerdict({ title: 'QA Engineer', html: 'build selenium frameworks', automationVet: true }).keep, true);
+test('vetVerdict: authwall / rate-limit wall (non-empty, not a job page) → KEEP why:unverifiable (recall fix)', () => {
+  // THE regression under test: a wall page is non-empty and NOT "closed", but the old code let the
+  // manual-only vet fire on it and silently dropped a real QA job forever. Now it fails OPEN.
+  assert.deepEqual(vetVerdict({ title: 'QA Engineer', html: AUTHWALL, automationVet: true }), { keep: true, why: 'unverifiable' });
+  assert.deepEqual(vetVerdict({ title: 'Automation Engineer', html: AUTHWALL, automationVet: true }), { keep: true, why: 'unverifiable' });
+  // even a wall page that happens to contain the closed phrase is NOT a job page → still kept
+  assert.equal(vetVerdict({ title: 'x', html: '<div class="authwall">No longer accepting applications</div>', automationVet: true }).why, 'unverifiable');
+});
+
+test('vetVerdict[David, automationVet on]: manual-QA JD dropped, automation JD kept (real job page)', () => {
+  assert.deepEqual(vetVerdict({ title: 'QA Engineer', html: jobPage('manual test cases only'), automationVet: true }), { keep: false, why: 'manual-only' });
+  assert.equal(vetVerdict({ title: 'QA Engineer', html: jobPage('build selenium frameworks'), automationVet: true }).keep, true);
 });
 
 test('vetVerdict[non-QA, automationVet off]: TPM/Delivery JD with no automation is KEPT (the the guest fix)', () => {
   // With automationVet ON this would be manual-only=drop — the second bug layer that nuked the guest.
-  assert.equal(vetVerdict({ title: 'Technical Program Manager', html: 'lead cross-functional programs', automationVet: false }).keep, true);
-  assert.equal(vetVerdict({ title: 'VP Delivery', html: 'own the delivery roadmap', automationVet: false }).keep, true);
+  assert.equal(vetVerdict({ title: 'Technical Program Manager', html: jobPage('lead cross-functional programs'), automationVet: false }).keep, true);
+  assert.equal(vetVerdict({ title: 'VP Delivery', html: jobPage('own the delivery roadmap'), automationVet: false }).keep, true);
+});
+
+test('looksLikeJobPage: real posting markers → true; walls/garbage/empty → false', () => {
+  assert.equal(looksLikeJobPage(jobPage('anything')), true);
+  assert.equal(looksLikeJobPage('<div class="show-more-less-html">x</div>'), true);
+  assert.equal(looksLikeJobPage('<section class="description__text">x</section>'), true);
+  assert.equal(looksLikeJobPage('{"@type":"JobPosting"}'), true);
+  // walls / login / garbage / empty → NOT a job page (caller then fails open)
+  assert.equal(looksLikeJobPage(AUTHWALL), false);
+  assert.equal(looksLikeJobPage('<html><body>Sign in to LinkedIn</body></html>'), false);
+  assert.equal(looksLikeJobPage(''), false);
+  assert.equal(looksLikeJobPage(null), false);
+  assert.equal(looksLikeJobPage(undefined), false);
 });
 
 test('canonicalJobUrl builds a stable view URL', () => {
@@ -147,6 +231,7 @@ const FIXTURE = `
     <span class="job-search-card__location">
                 Petah Tikva, Center District, Israel
             </span>
+    <time class="job-search-card__listdate" datetime="2026-07-12">3 days ago</time>
   </div>
 </li>
 <li>
@@ -173,11 +258,13 @@ test('parseCards extracts id/title/company/location and unescapes entities', () 
     title: 'Automation Team Lead, Israel',
     company: 'AlgoSec',
     location: 'Petah Tikva, Center District, Israel',
+    posted: '2026-07-12',           // pulled from the card's <time datetime="...">
   });
   assert.equal(cards[1].id, '4418983486');
   assert.equal(cards[1].title, 'QA Automation Team Leader & SDET');
   assert.equal(cards[1].company, 'SolarEdge');
   assert.equal(cards[1].location, 'Ramat Gan, Tel Aviv District, Israel');
+  assert.equal(cards[1].posted, '');  // no <time> tag in this card → empty
 });
 
 test('parseCards returns [] for empty/garbage/nullish input', () => {
@@ -266,4 +353,35 @@ test('jdSignalsAutomation: JD mentioning automation tools → true', () => {
 test('jdSignalsAutomation: pure-manual JD with no automation → false', () => {
   assert.equal(jdSignalsAutomation('Manual testing: write and execute test cases, report bugs.'), false);
   assert.equal(jdSignalsAutomation(''), false);
+});
+
+test('titleHardExcluded: internships flag drops interns but passes junior/mid/unspecified', () => {
+  const f = { internships: true, management: true, off_field: 'qa' }; // David's new filter
+  assert.equal(titleHardExcluded('QA Automation Intern', f, 'SomeStartup'), 'internship');
+  assert.equal(titleHardExcluded('סטודנט לבדיקות תוכנה', f, 'SomeStartup'), 'internship');
+  assert.equal(titleHardExcluded('Junior QA Automation Engineer', f, 'SomeStartup'), '');
+  assert.equal(titleHardExcluded('QA Automation Engineer', f, 'SomeStartup'), '');
+  assert.equal(titleHardExcluded('QA Team Lead', f, 'SomeStartup'), 'management');
+});
+
+test('titleHardExcluded: legacy junior:true still drops interns (guests unchanged)', () => {
+  const f = { junior: true };
+  assert.equal(titleHardExcluded('Software Intern', f, 'Anywhere'), 'internship');
+  assert.equal(titleHardExcluded('Junior Analyst', f, 'Anywhere'), 'junior');
+});
+
+// The Tavily source (search.mjs) now applies this same pre-filter. Regression for Bug 2
+// (2026-07-15): a pure-DevOps title reached David because search.mjs had no title filter.
+test('titleHardExcluded: search.mjs pre-filter — DevOps-only dropped, QA/Automation kept', () => {
+  const f = { internships: true, management: true, off_field: 'qa' }; // David's live filter
+  assert.equal(titleHardExcluded('DevOps Engineer', f, 'Harmony'), 'off-field'); // Bug 2 exact case
+  assert.equal(titleHardExcluded('Senior DevOps Engineer', f, 'Harmony'), 'off-field');
+  assert.equal(titleHardExcluded('QA Automation Engineer', f, 'Harmony'), '');    // in-field passes
+  assert.equal(titleHardExcluded('DevOps Automation Engineer', f, 'Harmony'), ''); // automation signal keeps it
+});
+
+test('extractDatePosted: pulls JSON-LD datePosted, tolerant of garbage', () => {
+  assert.equal(extractDatePosted('...{"@type":"JobPosting","datePosted":"2026-07-12T08:00:00.000Z"}...'), '2026-07-12');
+  assert.equal(extractDatePosted('<html>no ld+json here</html>'), '');
+  assert.equal(extractDatePosted(''), '');
 });

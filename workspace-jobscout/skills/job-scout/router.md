@@ -70,3 +70,10 @@ in Hebrew. See prompt-qa.md "ניהול אנשים — בעלים בלבד" for 
 | `/enable <id>` (NL: "תחזיר את <שם>") | set `enabled:true` |
 | "תמחק לגמרי את <שם>" | HARD delete — needs explicit "כן" confirmation; then `rm -rf workspace-jobscout/people/<id>/` + drop the registry entry |
 | `/add` | needs profile + CV files → must be done in a dev session, not from chat |
+
+## One-off / scheduled modes (added 2026-07-15)
+
+| Input | Intent |
+|---|---|
+| message containing `backfill` / `סריקת בסיס` (owner only) | one-time full sweep → `prompt-backfill-david.md` (SKILL.md routing rule 4) |
+| cron message containing `daily-question` | daily interview question → `prompt-daily-question.md` (SKILL.md routing rule 5) |

@@ -12,18 +12,28 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
-import { sleepMs } from './lib/cli.mjs';
+import { failJson as fail } from './lib/cli.mjs';
+import { requestWebhook } from '../../shared/lib/sheet-webhook.mjs';
+import { hasHttpScheme } from './lib/verify-links.mjs';
+
+// Hard guard: a provided, non-empty `url` field MUST be an http(s):// URL, so garbage text
+// (a page title, a stray note) can never land in the url column again. Empty string stays
+// allowed — some gmail-backfill rows legitimately have no URL. Fails with the standard
+// {ok:false,error} shape via fail(). Checks every object given (append rows / update updates).
+function assertUrlFields(objs) {
+  for (const o of objs) {
+    if (!o || typeof o !== 'object') continue;
+    if (!('url' in o)) continue;
+    const v = o.url;
+    if (v === '' || v == null) continue; // empty is allowed
+    if (typeof v !== 'string' || !hasHttpScheme(v)) fail(`invalid url: ${String(v)}`);
+  }
+}
 
 // Derive workspace root from this module's location (tools/sheet.mjs → ../).
 // Robust against the workspace dir being renamed (was hardcoded to /open_claw/workspace).
 const CONFIG_PATH = resolve(dirname(fileURLToPath(import.meta.url)), '..', '.config', 'job-scout.json');
 const TIMEOUT_MS = 30000;
-const TRIES = 3; // retry transient network errors + 5xx (Apps Script flakes); a timeout is terminal.
-
-function fail(error, extra = {}) {
-  console.log(JSON.stringify({ ok: false, error, ...extra }));
-  process.exit(1);
-}
 
 function getWebhookUrl() {
   let cfg;
@@ -39,34 +49,22 @@ function getWebhookUrl() {
 
 // Perform a request to the webhook and parse the JSON response.
 // The webhook returns a 302 to script.googleusercontent.com; fetch with
-// redirect:'follow' re-issues as GET automatically (we must NOT force method).
+// redirect:'follow' re-issues as GET automatically (we must NOT force method) —
+// shared requestWebhook GETs when bodyObj is undefined (ping/read-back), POSTs otherwise.
+// The retry policy (3× exp backoff on 5xx/network, timeout terminal) now lives in the
+// shared client (requestWebhook), which merely returns the raw response text; the exact
+// jobscout response semantics (JSON.parse, non-JSON fail with a 120-char preview + status,
+// distinct timeout vs fetch-failed messages) are preserved here.
 async function callWebhook(url, bodyObj) {
-  const opts = { redirect: 'follow' };
-  if (bodyObj !== undefined) {
-    opts.method = 'POST';
-    opts.headers = { 'Content-Type': 'application/json' };
-    opts.body = JSON.stringify(bodyObj);
+  const r = await requestWebhook(url, bodyObj, { timeoutMs: TIMEOUT_MS, retry: true });
+  if (r.error) {
+    if (r.timeout) fail(`request timed out after ${TIMEOUT_MS}ms`); // terminal — don't stack timeouts
+    fail(`fetch failed: ${r.error}`);
   }
-  for (let attempt = 1; attempt <= TRIES; attempt++) {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-    let res, text;
-    try {
-      res = await fetch(url, { ...opts, signal: controller.signal });
-      text = await res.text();
-    } catch (e) {
-      clearTimeout(timer);
-      if (e.name === 'AbortError') fail(`request timed out after ${TIMEOUT_MS}ms`); // terminal — don't stack timeouts
-      if (attempt < TRIES) { await sleepMs(600 * 2 ** (attempt - 1)); continue; }
-      fail(`fetch failed: ${e.message}`);
-    }
-    clearTimeout(timer);
-    if (res.status >= 500 && attempt < TRIES) { await sleepMs(600 * 2 ** (attempt - 1)); continue; }
-    try {
-      return JSON.parse(text);
-    } catch {
-      fail(`webhook returned non-JSON (HTTP ${res.status})`, { preview: text.slice(0, 120) });
-    }
+  try {
+    return JSON.parse(r.text);
+  } catch {
+    fail(`webhook returned non-JSON (HTTP ${r.status})`, { preview: r.text.slice(0, 120) });
   }
 }
 
@@ -92,6 +90,7 @@ async function main() {
     case 'append': {
       const parsed = parseJsonArg(rest[0], 'row JSON');
       const rows = Array.isArray(parsed) ? parsed : [parsed];
+      assertUrlFields(rows);
       const out = await callWebhook(url, { action: 'append', rows });
       console.log(JSON.stringify(out));
       break;
@@ -107,6 +106,7 @@ async function main() {
       const row = Number(rest[0]);
       if (!Number.isFinite(row) || row < 2) fail('update requires a valid row number (>= 2)');
       const updates = parseJsonArg(rest[1], 'updates JSON');
+      assertUrlFields([updates]);
       const out = await callWebhook(url, { action: 'update', row, updates });
       console.log(JSON.stringify(out));
       break;
@@ -119,6 +119,7 @@ async function main() {
       const id = rest[0];
       if (id === undefined || id === '') fail('update-by-id requires an id argument');
       const updates = parseJsonArg(rest[1], 'updates JSON');
+      assertUrlFields([updates]);
       const before = await callWebhook(url, { action: 'read', filter: { id } });
       if (!before.ok) { console.log(JSON.stringify(before)); process.exit(1); }
       const matches = before.rows || [];

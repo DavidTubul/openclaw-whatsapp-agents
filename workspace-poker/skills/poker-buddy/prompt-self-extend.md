@@ -53,7 +53,7 @@ Then stop and wait. Edit **only** after David explicitly approves ("כן" / "א�
 
 ### B2 — Snapshot BEFORE touching anything
 ```bash
-cd /home/davidtobol2580/open_claw/workspace-poker
+cd ~/open_claw/workspace-poker
 node tools/self-edit.mjs snapshot '["skills/poker-buddy/<file>", "USER.md", ...]'
 ```
 List **every** file you're about to edit OR create (a not-yet-existing file is fine — revert will delete it).
@@ -105,7 +105,7 @@ patches. Reply plainly in Hebrew that it needs a dev session ("זה דורש ס�
 ## "מה שינית?" — audit trail
 If David asks what you changed / when / your change history:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace-poker && node tools/self-edit.mjs changelog 15
+cd ~/open_claw/workspace-poker && node tools/self-edit.mjs changelog 15
 ```
 Answer **only** from this changelog (+ the files themselves) — never from memory. Each entry has
 `ts/summary/files/snapshot_id`. If there's nothing relevant, say so plainly.

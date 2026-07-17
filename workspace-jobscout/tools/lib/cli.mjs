@@ -1,7 +1,6 @@
 // Shared CLI helpers for the job-scout tools (search / linkedin / telegram / gmail / sheet).
 // Extracted to kill the per-file copies of arg-parsing, the JSON error shape, state IO, and sleeps.
-import { readFileSync, writeFileSync, mkdirSync, existsSync, renameSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { readFileSync, existsSync } from 'node:fs';
 
 // `--person <id>` (default provided). Per-person tools read this to pick whose registry entry to use.
 export function personIdFromArgv(argv = process.argv, fallback = 'david') {
@@ -54,11 +53,8 @@ export function readJsonSafe(file, fallback = null) {
   catch { return fallback; }
 }
 
-// Atomic JSON write: mkdir -p the dir, write to a pid-scoped temp file, then rename into place —
-// so a crash mid-write (or a concurrent run) can never leave a half-written/truncated state file.
-export function writeJsonAtomic(file, obj, { pretty = false } = {}) {
-  mkdirSync(dirname(file), { recursive: true });
-  const tmp = `${file}.tmp-${process.pid}`;
-  writeFileSync(tmp, pretty ? JSON.stringify(obj, null, 2) : JSON.stringify(obj));
-  renameSync(tmp, file);
-}
+// NOTE: writeJsonAtomic moved to the shared atomic-write primitive (shared/lib/fs-atomic.mjs).
+// Import it from there. CAREFUL when migrating a call site: the shared default is pretty=2, whereas
+// this module's default was COMPACT — every former compact caller must pass { pretty: 0 } explicitly
+// (the shared writer also appends a trailing newline; the state files are JSON.parse-consumed, so
+// that is harmless).

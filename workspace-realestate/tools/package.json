@@ -1,1 +1,1 @@
-{ "type": "module" }
+{"type":"module","dependencies":{"imapflow":"^1.4.7"}}

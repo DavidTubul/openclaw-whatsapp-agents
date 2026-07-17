@@ -1,0 +1,30 @@
+{
+  "bot": {
+    "name": "זורו",
+    "emoji": "⚔️",
+    "mention_pattern": "זורו"
+  },
+  "whatsapp": {
+    "group_id": "<GROUP_ID>@g.us",
+    "group_name": "<GROUP_NAME>",
+    "require_mention": true
+  },
+  "daily": {
+    "cron": "0 8 * * *",
+    "timezone": "Asia/Jerusalem",
+    "content_file": "skills/quit-coach/content.md",
+    "sent_log": "data/daily/sent.jsonl"
+  },
+  "sheet": {
+    "enabled": false,
+    "webhook_url": "https://script.google.com/macros/s/<APPS_SCRIPT_DEPLOY_ID>/exec"
+  },
+  "session_hygiene": {
+    "enabled": true,
+    "max_transcript_bytes": 600000,
+    "idle_secs": 90,
+    "daily_reset": { "enabled": true, "hour": 6, "minute": 0, "span_minutes": 10, "tz": "Asia/Jerusalem" },
+    "recent_window": 40,
+    "notify_on_reset": true
+  }
+}

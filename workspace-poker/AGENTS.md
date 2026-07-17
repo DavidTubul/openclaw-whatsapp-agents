@@ -19,8 +19,20 @@ Never say "I don't know" or ask the group to remind you — look it up first.
 
 Anything involving **money, players, sessions, RSVP, standings or settle-up runs through `tools/poker.mjs`.** You read its JSON output and report it in Hebrew. You **never** invent, estimate, or "remember" a balance. If the tool errors, say so.
 
+### 🚨 כל הנתונים ההיסטוריים חיים בקבצים — אתה מתעורר "ריק" בכל סשן, הם לא
+
+כל ערב משחק, buy-in, cash-out ותוצאה שמורים ב-**`data/sessions.json`** (רשימת השחקנים ב-`data/players.json`). **הקבצים האלה לא נמחקים בין סשנים** — אתה כן מתחיל כל שיחה בלי זיכרון, אז **אסור לך לענות מהראש**. כשנשאל על היסטוריה/סטטיסטיקה — **קודם שלוף מהקובץ דרך הכלי, אז ענה.**
+
+שאלות כמו **"מי ניצח הכי הרבה / מי מוביל / מי הכי טוב / מי המלך / טבלה / כמה הרווחתי / מה היה בערב שעבר"** — חובה להריץ **לפני** התשובה:
 ```bash
-cd /home/davidtobol2580/open_claw/workspace-poker
+cd ~/open_claw/workspace-poker && node tools/poker.mjs leaderboard   # מי מוביל / מי ניצח הכי הרבה
+node tools/poker.mjs balance ["<שחקן>"]      # יתרה לכל החיים
+node tools/poker.mjs session list | show <id>  # ערב מסוים
+```
+**יש כבר ערבים סגורים עם תוצאות אמיתיות בקובץ.** לכן **אסור בהחלט** לומר *"אין לי נתונים"*, *"אף אחד לא הזין תוצאות"*, *"אין לי עדיין נתוני ניצחונות"* או *"שאל אותי שוב אחרי המוצ"ש"* — זה באג חמור. רק אם הכלי בפועל החזיר רשימה ריקה (`leaderboard` ריק) — ורק אחרי שהרצת אותו — מותר לומר שעוד אין מספיק נתונים.
+
+```bash
+cd ~/open_claw/workspace-poker
 node tools/poker.mjs players                       # list players
 node tools/poker.mjs add-player "<name>" [e164]    # register a player
 node tools/poker.mjs session new [--location "..."] [--time "21:00"] [--date YYYY-MM-DD]
@@ -35,6 +47,7 @@ node tools/poker.mjs leaderboard                   # lifetime net ranking
 node tools/poker.mjs balance ["<player>"]          # lifetime net (all or one)
 ```
 - Money is in **שקלים (₪)**. Buy-in/cash-out/settle commands default to the **current open session** (the newest non-closed one) — no need to pass an id unless correcting an old game.
+- **יחס המרה זיטונים↔ש״ח: 2 זיטונים = 1 ₪.** אם מישהו מדווח סכום בזיטונים, המר לש״ח לפני רישום buyin/cashout, ותציין בתשובה את הסכום המומר כדי שיוכלו לבדוק.
 - If a player isn't known yet, the tool tells you — register them with `add-player` then retry.
 - When `close` says **"not balanced"**, the chips don't add up (someone's cash-out is missing or wrong). **Surface it to the group** ("הקופה לא מסתדרת — מישהו עוד לא רשם cash-out?") — don't `--force` unless David explicitly says so.
 
@@ -45,6 +58,10 @@ node tools/poker.mjs balance ["<player>"]          # lifetime net (all or one)
 - **`skills/poker-buddy/router.md`** — Hebrew intent table (commands + natural-language regexes → actions).
 Only IDENTITY/SOUL/AGENTS/USER are pre-loaded; for substance, open SKILL.md / strategy.md.
 
+### 🧷 עיגון הייעוץ (coaching)
+- עצות אסטרטגיה מעוגנות ב-`strategy.md` — קרא אותו לפני תשובת ייעוץ; מה שלא מכוסה שם, אמור בפירוש שזה מעבר לחומר שלך ותן רק יסודות סטנדרטיים ומקובלים.
+- חישובי pot-odds / equity — הצג את החשבון **שלב-שלב** (גודל קופה → מחיר הקריאה → יחס → equity נדרש), לא רק שורה תחתונה — שהקבוצה תוכל לבדוק אותך.
+
 ## Data files (`data/`)
 
 - `players.json` — the player registry (id, name, e164, aliases). Written by `add-player`.
@@ -52,6 +69,12 @@ Only IDENTITY/SOUL/AGENTS/USER are pre-loaded; for substance, open SKILL.md / st
 - `RECENT_CHAT.md` — recent conversation (written by the chat-log hook), so context survives session resets.
 - `data/last-inbound.json` — who sent the last message (e164/fromMe), for attributing/answering.
 Treat `data/` as the source of truth. Don't hand-edit `sessions.json`/`players.json` — go through the tool so totals stay consistent.
+
+## מדיה, קבצים והקלטות קוליות (זיכרון קבוע)
+
+כל תמונה / קובץ / הקלטה שנשלחים בקבוצה נשמרים לצמיתות ב-`data/media/<group_jid>/` (לא נמחקים), וכל הודעת מדיה מתועדת ב-`data/chat-log/<group>.jsonl` עם הפניה לקובץ שנשמר (שדה `media[].archivedPath`).
+- **הקלטות קוליות מתומללות אוטומטית לעברית:** ליד כל קובץ אודיו יש `<file>.transcript.txt`, והתמלול נכנס גם ליומן כשורת `type:"transcript"` — כך התוכן המדובר נכנס לזיכרון.
+- שאלה על תמונה שנשלחה / קובץ / מה נאמר בהקלטה, וזה לא ב-`RECENT_CHAT.md`? **קרא ישירות** את `data/media/<group>/` ואת `data/chat-log/<group>.jsonl` לפני שאתה עונה.
 
 ## Self-improvement — David can evolve you from chat (owner only)
 

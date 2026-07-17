@@ -1,0 +1,310 @@
+{
+  "_doc": "Central agent registry v2 — committed TEMPLATE (placeholders only, no PII). COPY to shared/registry.json and fill in real jids / owner phone; registry.json is gitignored. This v2 registry is the COMPLETE single source of truth for WhatsApp wiring: openclaw.json's whatsapp groups, bindings, agents.list identity, and cron delivery targets are all DERIVED from it by shared/tools/registry-sync.mjs (--check / --apply). agent-registry.mjs loads registry.json if present else this example. workspaceDir/configPath/roster paths are repo-relative and resolved to absolute by the loader (which derives the repo root from its own module location; set \"_repoRoot\" to override). --- v2 SCHEMA --- top-level `groups`: symbolic-name -> { jid, label(human), requireMention, listenOnly?, routeAgentId?, systemPrompt? }. Per-agent: `primaryGroup`+`groups` are SYMBOLIC names -> resolved to jids (primaryGroupId/groupIds); `identity`{name(Hebrew wake-word/display), emoji, mentionPatterns?(default [name])}; `cronTargets`{default:<symbolic>, <cron-job-name>:<symbolic>}; `listenGroups`(symbolic) = listenOnly groups this agent OWNS. listenOnly groups stay OUT of any agent's `groups`; the silent `listener` agent (empty groups, unmatchable mentionPatterns) is the route target and is excluded from listAgents() by default. Optional per-agent blocks: sessionHygiene, selfEdit {guardedJson,coreTool}, chatLog {labels,e164DigitsOnly,classifyScout,media,legacyBotNames,sheetMirror}, ackReact {enabled(def true), scope:'mentions'(def)|'all'}. owner {e164,label} lives ONCE at top level. --- ARCHIVED (retirement) --- an agent (or a top-level group) with `archived: true` is RETIRED: kept here for a future revival but excluded from listAgents()/getAgent()/getGroups()/byGroup by default (pass {includeArchived:true} to reach it), and registry-sync REMOVES its openclaw.json allowlist/binding/agents.list wiring (--check flags it, --apply drops it). To REVIVE: flip archived→false, move the workspace back, `registry-sync --apply`, re-enable its systemd timer + restart the gateway. (pitzi/pitzi-demo below are archived — the nuts-shop demo bot, retired 2026-07-17; workspace lives in archive/workspace-pitzuchim.)",
+  "owner": {
+    "e164": "<OWNER_E164>",
+    "label": "<OWNER_LABEL>"
+  },
+  "groups": {
+    "jobscout-main": {
+      "jid": "<JOBSCOUT_GROUP_ID>@g.us",
+      "label": "Job Scout",
+      "requireMention": true
+    },
+    "digit-main": {
+      "jid": "<DIGIT_GROUP_ID>@g.us",
+      "label": "Digit — main",
+      "requireMention": true
+    },
+    "digit-dy": {
+      "jid": "<DIGIT_GROUP_ID_2>@g.us",
+      "label": "Digit — secondary",
+      "requireMention": true
+    },
+    "digit-listen": {
+      "jid": "<DIGIT_LISTEN_GROUP_ID>@g.us",
+      "label": "Digit — listen-only",
+      "requireMention": false,
+      "listenOnly": true,
+      "routeAgentId": "listener",
+      "systemPrompt": "<LISTEN_ONLY_NO_REPLY_PROMPT>"
+    },
+    "poker-main": {
+      "jid": "<POKER_GROUP_ID>@g.us",
+      "label": "Poker",
+      "requireMention": true
+    },
+    "pitzi-demo": {
+      "jid": "<PITZI_GROUP_ID>@g.us",
+      "label": "Pitzi — demo",
+      "requireMention": true,
+      "archived": true
+    },
+    "zorro-main": {
+      "jid": "<ZORRO_GROUP_ID>@g.us",
+      "label": "Zorro",
+      "requireMention": true
+    }
+  },
+  "agents": [
+    {
+      "agentId": "main",
+      "workspaceDir": "workspace-jobscout",
+      "primaryGroup": "jobscout-main",
+      "groups": [
+        "jobscout-main"
+      ],
+      "identity": {
+        "name": "סקוטי",
+        "emoji": "🤖"
+      },
+      "cronTargets": {
+        "default": "jobscout-main"
+      },
+      "ackReact": {
+        "enabled": true,
+        "scope": "mentions"
+      },
+      "roster": {
+        "type": "people",
+        "file": "workspace-jobscout/.config/people.json"
+      },
+      "fromLabel": {
+        "inbound": "<OWNER_LABEL>",
+        "outbound": "סקוטי"
+      },
+      "chatLog": {
+        "labels": {
+          "outboundFrom": "scotty",
+          "inboundSpeakerDefault": "אורח",
+          "botSpeaker": "Scotty"
+        }
+      },
+      "configPath": "workspace-jobscout/.config/job-scout.json",
+      "sessionHygiene": {
+        "enabled": true,
+        "max_transcript_bytes": 1000000,
+        "idle_secs": 90,
+        "daily_reset": {
+          "hour": 7,
+          "minute": 30,
+          "span_minutes": 10,
+          "tz": "Asia/Jerusalem"
+        },
+        "recent_window": 60,
+        "notify_on_reset": true,
+        "notify_message": "התחלתי שיחה חדשה כדי להישאר חד 🙂 כל המעקב והמשרות שמורים — אפשר להמשיך כרגיל."
+      },
+      "selfEdit": {
+        "guardedJson": [
+          ".config/people.json",
+          ".config/job-scout.json"
+        ]
+      }
+    },
+    {
+      "agentId": "digit",
+      "workspaceDir": "workspace-realestate",
+      "primaryGroup": "digit-main",
+      "groups": [
+        "digit-main",
+        "digit-dy"
+      ],
+      "listenGroups": [
+        "digit-listen"
+      ],
+      "identity": {
+        "name": "דיגיט",
+        "emoji": "🏠"
+      },
+      "cronTargets": {
+        "default": "digit-main",
+        "digit-mail-check": "digit-dy"
+      },
+      "ackReact": {
+        "enabled": true,
+        "scope": "mentions"
+      },
+      "roster": {
+        "type": "none"
+      },
+      "fromLabel": {
+        "inbound": "<OWNER_LABEL>",
+        "outbound": "דיגיט"
+      },
+      "chatLog": {
+        "labels": {
+          "inboundSpeakerDefault": "David"
+        }
+      },
+      "configPath": "workspace-realestate/.config/bot.json",
+      "sessionHygiene": {
+        "enabled": true,
+        "recent_window": 40,
+        "idle_secs": 90,
+        "notify_on_reset": true
+      }
+    },
+    {
+      "agentId": "poker",
+      "workspaceDir": "workspace-poker",
+      "primaryGroup": "poker-main",
+      "groups": [
+        "poker-main"
+      ],
+      "identity": {
+        "name": "דאוס",
+        "emoji": "🎰"
+      },
+      "cronTargets": {
+        "default": "poker-main"
+      },
+      "ackReact": {
+        "enabled": true,
+        "scope": "mentions"
+      },
+      "roster": {
+        "type": "players",
+        "file": "workspace-poker/data/players.json"
+      },
+      "fromLabel": {
+        "inbound": "<OWNER_LABEL>",
+        "outbound": "דאוס"
+      },
+      "chatLog": {
+        "labels": {
+          "inboundFrom": "player",
+          "inboundSpeakerDefault": "שחקן"
+        }
+      },
+      "configPath": "workspace-poker/.config/bot.json",
+      "sessionHygiene": {
+        "enabled": true,
+        "max_transcript_bytes": 600000,
+        "idle_secs": 90,
+        "daily_reset": {
+          "enabled": true,
+          "hour": 6,
+          "minute": 0,
+          "span_minutes": 10,
+          "tz": "Asia/Jerusalem"
+        },
+        "recent_window": 40,
+        "notify_on_reset": true,
+        "notify_message": "התחלתי שיחה חדשה כדי להישאר חד 🙂 כל הקופה, התוצאות והטבלה שמורים — אפשר להמשיך כרגיל."
+      },
+      "selfEdit": {
+        "guardedJson": [
+          ".config/bot.json"
+        ]
+      }
+    },
+    {
+      "agentId": "pitzi",
+      "archived": true,
+      "workspaceDir": "archive/workspace-pitzuchim",
+      "primaryGroup": "pitzi-demo",
+      "groups": [
+        "pitzi-demo"
+      ],
+      "identity": {
+        "name": "פיצי",
+        "emoji": "🥜"
+      },
+      "cronTargets": {
+        "default": "pitzi-demo"
+      },
+      "ackReact": {
+        "enabled": true,
+        "scope": "mentions"
+      },
+      "roster": {
+        "type": "none"
+      },
+      "fromLabel": {
+        "inbound": "<OWNER_LABEL>",
+        "outbound": "פיצי"
+      },
+      "chatLog": {
+        "labels": {
+          "inboundFrom": "customer",
+          "inboundSpeakerDefault": "לקוח"
+        }
+      },
+      "configPath": "archive/workspace-pitzuchim/.config/bot.json",
+      "sessionHygiene": {
+        "enabled": true,
+        "recent_window": 40,
+        "idle_secs": 90,
+        "notify_on_reset": true
+      }
+    },
+    {
+      "agentId": "zorro",
+      "workspaceDir": "workspace-quitsmoke",
+      "primaryGroup": "zorro-main",
+      "groups": [
+        "zorro-main"
+      ],
+      "identity": {
+        "name": "זורו",
+        "emoji": "⚔️"
+      },
+      "cronTargets": {
+        "default": "zorro-main"
+      },
+      "ackReact": {
+        "enabled": true,
+        "scope": "mentions"
+      },
+      "roster": {
+        "type": "members",
+        "file": "workspace-quitsmoke/data/streaks/members.jsonl",
+        "fallbackFile": "workspace-quitsmoke/data/players.json"
+      },
+      "fromLabel": {
+        "inbound": "<OWNER_LABEL>",
+        "outbound": "זורו"
+      },
+      "chatLog": {
+        "labels": {
+          "inboundFrom": "member",
+          "inboundSpeakerDefault": "חבר"
+        }
+      },
+      "configPath": "workspace-quitsmoke/.config/bot.json",
+      "sessionHygiene": {
+        "enabled": true,
+        "max_transcript_bytes": 600000,
+        "idle_secs": 90,
+        "daily_reset": {
+          "enabled": true,
+          "hour": 6,
+          "minute": 0,
+          "span_minutes": 10,
+          "tz": "Asia/Jerusalem"
+        },
+        "recent_window": 40,
+        "notify_on_reset": true,
+        "notify_message": "התחלתי שיחה חדשה כדי להישאר חד 🙂 כל המעקב והרצף שלך שמורים — אפשר להמשיך כרגיל."
+      },
+      "selfEdit": {
+        "guardedJson": [
+          ".config/bot.json"
+        ],
+        "coreTool": "tools/streaks.mjs"
+      }
+    },
+    {
+      "agentId": "listener",
+      "workspaceDir": "workspace-listener",
+      "groups": [],
+      "identity": {
+        "name": "מאזין",
+        "emoji": "👂",
+        "mentionPatterns": [
+          "OPENCLAW_LISTENER_NEVER_MATCH_x7f3a9"
+        ]
+      }
+    }
+  ]
+}

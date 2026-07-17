@@ -8,8 +8,11 @@ import { StringSession } from 'telegram/sessions/index.js';
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 import { evaluateLocation } from './lib/location-filter.mjs';
-import { personIdFromArgv, failJson as fail, requireEnv, readJsonSafe, writeJsonAtomic } from './lib/cli.mjs';
+import { personIdFromArgv, failJson as fail, requireEnv, readJsonSafe } from './lib/cli.mjs';
+import { writeJsonAtomic } from '../../shared/lib/fs-atomic.mjs';
 import { loadPersonContext } from './lib/person-config.mjs';
+import { appendDrops } from './lib/droplog.mjs';
+import { todayInTz } from '../../shared/lib/time.mjs';
 
 function getApiCreds() {
   const { TELEGRAM_API_ID, TELEGRAM_API_HASH } = requireEnv(['TELEGRAM_API_ID', 'TELEGRAM_API_HASH']);
@@ -17,7 +20,7 @@ function getApiCreds() {
 }
 
 const loadState = (statePath) => readJsonSafe(statePath, {}) || {};
-const saveState = (statePath, state) => writeJsonAtomic(statePath, state, { pretty: true });
+const saveState = (statePath, state) => writeJsonAtomic(statePath, state, { pretty: 2 }); // pretty-printed
 
 async function login() {
   const { apiId, apiHash } = getApiCreds();
@@ -44,6 +47,11 @@ async function fetch() {
   const sessionStr = process.env.TELEGRAM_SESSION;
   if (!sessionStr) fail('TELEGRAM_SESSION not set (run `node telegram.mjs login` first)');
 
+  // --no-persist: read-only test run — don't advance the per-channel cursor (skip saveState)
+  // and don't write the drop log. minId is still used as-is, so a test run never starves the
+  // next morning's real scout by advancing the last_seen_id past unprocessed messages.
+  const noPersist = process.argv.includes('--no-persist');
+
   const personId = personIdFromArgv();
   const { person, locFilter } = loadPersonContext(personId, { locationFilter: true });
   const tg = person.telegram || {};
@@ -63,6 +71,8 @@ async function fetch() {
 
   const state = loadState(STATE_PATH);
   const candidates = [];
+  const drops = [];                                   // audit trail → data/drops.jsonl
+  const today = todayInTz(); // tz-aware (Asia/Jerusalem), not naive UTC
 
   for (const channel of channels) {
     const lastSeen = Number(state?.[channel]?.last_seen_id) || 0;
@@ -82,7 +92,13 @@ async function fetch() {
       if (id > maxId) maxId = id;
       if (dateSec && dateSec < cutoffSec) continue;
       const { keep, location } = evaluateLocation(text, locFilter);
-      if (!keep) continue;
+      if (!keep) {
+        // Location-drop audit: record the permalink + first 120 chars of the post so a future
+        // "a job was in the channel but never reached me" is answerable (title = post text, capped
+        // in droplog). Reason is always 'location' — the only filter Telegram fetch applies here.
+        drops.push({ date: today, source: `telegram:${channel}`, id: id, url: `https://t.me/${channel}/${id}`, title: text, company: '', location: '', reason: 'location' });
+        continue;
+      }
       candidates.push({
         source: `telegram:${channel}`,
         title: '',
@@ -99,8 +115,16 @@ async function fetch() {
   }
 
   await client.disconnect();
-  saveState(STATE_PATH, state);
-  process.stdout.write(JSON.stringify({ ok: true, count: candidates.length, candidates }) + '\n');
+  // --no-persist: skip the cursor write (don't advance last_seen_id) AND the drop log, so a test
+  // run mutates nothing. A normal run persists both.
+  if (!noPersist) {
+    saveState(STATE_PATH, state);
+    if (drops.length) {
+      try { appendDrops(person.paths.dropsLog, drops); }
+      catch (e) { process.stderr.write(`[telegram] drop-log write failed: ${e.message}\n`); }
+    }
+  }
+  process.stdout.write(JSON.stringify({ ok: true, count: candidates.length, candidates, persisted: !noPersist }) + '\n');
 }
 
 async function main() {

@@ -32,9 +32,9 @@ test("buildSyncArgs combines dry-run and verbose", () => {
 });
 
 test("resolveLocalDir resolves a relative local_dir against the workspace root", () => {
-  const root = "/home/davidtobol2580/open_claw/workspace-realestate";
+  const root = "/repo/workspace-realestate";
   const dir = resolveLocalDir({ drive: { local_dir: "deal-data" } }, root);
-  assert.equal(dir, "/home/davidtobol2580/open_claw/workspace-realestate/deal-data");
+  assert.equal(dir, "/repo/workspace-realestate/deal-data");
 });
 
 test("resolveLocalDir keeps an absolute local_dir as-is", () => {

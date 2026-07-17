@@ -1,8 +1,5 @@
 {
-  "whatsapp": {
-    "group_id": "<GROUP_ID>@g.us",
-    "group_name": "<GROUP_NAME>"
-  },
+  "_note": "WhatsApp/session-hygiene wiring (group_id/group_ids/group_names/require_mention/listen-only/session_hygiene) is NOT here — it lives in shared/registry.json, the single source of truth (registry v2). No code reads bot.json wiring anymore. To wire this agent to a group: edit shared/registry.json (add the group to the top-level `groups` map + the agent's `groups`/`listenGroups`), run `node shared/tools/registry-sync.mjs --check` then `--apply`, then restart the gateway while chat is idle. bot.json holds domain config only.",
   "drive": {
     "remote": "gdrive",
     "folder": "",
@@ -10,11 +7,5 @@
     "_note": "rclone remote 'gdrive' is a READ-ONLY Google service account. root_folder_id (your shared Drive folder) is baked into the remote, so folder='' = the shared-folder root. The SA key lives OUTSIDE the repo at ~/.openclaw/secrets/gdrive-sa.json (chmod 600). Create with: rclone config create gdrive drive scope=drive.readonly service_account_file=<key> root_folder_id=<id> export_formats=pdf"
   },
   "tavily_secret_ref": "TAVILY_API_KEY",
-  "disclaimer": "<general-guidance-not-professional-advice disclaimer shown on tax/legal/financial answers>",
-  "session_hygiene": {
-    "enabled": true,
-    "recent_window": 40,
-    "idle_secs": 90,
-    "notify_on_reset": true
-  }
+  "disclaimer": "<general-guidance-not-professional-advice disclaimer shown on tax/legal/financial answers>"
 }

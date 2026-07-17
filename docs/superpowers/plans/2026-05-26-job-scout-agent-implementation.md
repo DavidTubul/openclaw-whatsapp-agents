@@ -13,7 +13,7 @@
 ## File Structure
 
 ```
-/home/davidtobol2580/open_claw/
+~/open_claw/
 ├── workspace/
 │   ├── profile/
 │   │   ├── cv.pdf                           # (exists)
@@ -52,7 +52,7 @@
 
 All `openclaw` calls below must use Node 22. Use the wrapper:
 ```bash
-/home/davidtobol2580/open_claw/openclaw <args>
+~/open_claw/openclaw <args>
 ```
 or for shell sessions:
 ```bash
@@ -77,13 +77,13 @@ Expected: `OpenClaw 2026.5.22 (a374c3a)` or newer
 
 - [ ] **Step 2: Verify Gateway running**
 ```bash
-/home/davidtobol2580/open_claw/openclaw status 2>&1 | grep "Gateway "
+~/open_claw/openclaw status 2>&1 | grep "Gateway "
 ```
 Expected: line containing `local · ws://127.0.0.1:18789 · reachable`
 
 - [ ] **Step 3: If unreachable, restart**
 ```bash
-/home/davidtobol2580/open_claw/openclaw gateway restart
+~/open_claw/openclaw gateway restart
 ```
 Then re-check Step 2.
 
@@ -99,13 +99,13 @@ Open https://tavily.com/ → Sign up → Dashboard → Copy API key (starts with
 
 - [ ] **Step 2: Store key in OpenClaw secrets**
 ```bash
-/home/davidtobol2580/open_claw/openclaw secrets set TAVILY_API_KEY 'tvly-XXXXXXXXXXXXXXXXXXXXXXXXXXXX'
+~/open_claw/openclaw secrets set TAVILY_API_KEY 'tvly-XXXXXXXXXXXXXXXXXXXXXXXXXXXX'
 ```
 Expected: `Stored secret: TAVILY_API_KEY`
 
 - [ ] **Step 3: Verify**
 ```bash
-/home/davidtobol2580/open_claw/openclaw secrets list | grep TAVILY
+~/open_claw/openclaw secrets list | grep TAVILY
 ```
 Expected: `TAVILY_API_KEY  (set)`
 
@@ -118,25 +118,25 @@ Expected: `TAVILY_API_KEY  (set)`
 
 - [ ] **Step 1: Check baseline (these should already be enabled)**
 ```bash
-/home/davidtobol2580/open_claw/openclaw plugins list 2>&1 | grep -E "^│ .*(browser|tavily|google|memory-core|document-extract|anthropic)"
+~/open_claw/openclaw plugins list 2>&1 | grep -E "^│ .*(browser|tavily|google|memory-core|document-extract|anthropic)"
 ```
 Expected: all 6 lines show `enabled`. If any show `disabled`, run the next step.
 
 - [ ] **Step 2: Enable any missing plugin**
 ```bash
 for p in browser tavily google memory-core document-extract anthropic; do
-  /home/davidtobol2580/open_claw/openclaw plugins enable $p 2>&1 | tail -2
+  ~/open_claw/openclaw plugins enable $p 2>&1 | tail -2
 done
 ```
 Expected: `Plugin enabled: <name>` for each (or "already enabled").
 
 - [ ] **Step 3: Verify WhatsApp plugin is installed**
 ```bash
-/home/davidtobol2580/open_claw/openclaw channels list --all 2>&1 | grep -i whatsapp
+~/open_claw/openclaw channels list --all 2>&1 | grep -i whatsapp
 ```
 Expected: a line including `WhatsApp:`. If it says `not installed`, run:
 ```bash
-/home/davidtobol2580/open_claw/openclaw plugins install @openclaw/whatsapp-channel
+~/open_claw/openclaw plugins install @openclaw/whatsapp-channel
 ```
 
 ---
@@ -147,7 +147,7 @@ Expected: a line including `WhatsApp:`. If it says `not installed`, run:
 
 - [ ] **Step 1: Initiate pairing**
 ```bash
-/home/davidtobol2580/open_claw/openclaw channels add --channel whatsapp
+~/open_claw/openclaw channels add --channel whatsapp
 ```
 This prints a QR code (ASCII) and starts a session.
 
@@ -156,13 +156,13 @@ On phone: WhatsApp → Settings → Linked Devices → Link a Device → scan th
 
 - [ ] **Step 3: Verify pairing**
 ```bash
-/home/davidtobol2580/open_claw/openclaw channels status --probe 2>&1 | grep -i whatsapp
+~/open_claw/openclaw channels status --probe 2>&1 | grep -i whatsapp
 ```
 Expected: `whatsapp ... ready` and shows your phone number `050-000-0000` (or `+972500000000`).
 
 - [ ] **Step 4: Smoke test (send to self)**
 ```bash
-/home/davidtobol2580/open_claw/openclaw message send --channel whatsapp --target self --message "OpenClaw paired ✓"
+~/open_claw/openclaw message send --channel whatsapp --target self --message "OpenClaw paired ✓"
 ```
 Expected: message appears in your "Message yourself" chat.
 
@@ -184,14 +184,14 @@ Send `/ping` in the group. This is needed so OpenClaw can index the group via yo
 
 - [ ] **Step 4: Discover group chat ID**
 ```bash
-/home/davidtobol2580/open_claw/openclaw directory list --channel whatsapp --kind group 2>&1 | grep -i scout
+~/open_claw/openclaw directory list --channel whatsapp --kind group 2>&1 | grep -i scout
 ```
 Expected: a line like `Job Scout 🤖 | id=120363xxxxxxxxxxxx@g.us`. Copy the id (everything up to `@g.us` inclusive).
 
 - [ ] **Step 5: Save group id to config**
 ```bash
-mkdir -p /home/davidtobol2580/open_claw/workspace/.config
-cat > /home/davidtobol2580/open_claw/workspace/.config/job-scout.json <<'EOF'
+mkdir -p ~/open_claw/workspace/.config
+cat > ~/open_claw/workspace/.config/job-scout.json <<'EOF'
 {
   "whatsapp": {
     "group_id": "PASTE_GROUP_ID_HERE@g.us",
@@ -211,8 +211,8 @@ Then edit `job-scout.json` and replace `PASTE_GROUP_ID_HERE@g.us` with the actua
 
 - [ ] **Step 6: Verify by sending to group**
 ```bash
-GROUP_ID=$(jq -r .whatsapp.group_id /home/davidtobol2580/open_claw/workspace/.config/job-scout.json)
-/home/davidtobol2580/open_claw/openclaw message send --channel whatsapp --target "$GROUP_ID" --message "Group bound ✓"
+GROUP_ID=$(jq -r .whatsapp.group_id ~/open_claw/workspace/.config/job-scout.json)
+~/open_claw/openclaw message send --channel whatsapp --target "$GROUP_ID" --message "Group bound ✓"
 ```
 Expected: message appears in the "Job Scout 🤖" group.
 
@@ -225,7 +225,7 @@ Expected: message appears in the "Job Scout 🤖" group.
 
 - [ ] **Step 1: Start OAuth flow**
 ```bash
-/home/davidtobol2580/open_claw/openclaw configure --service google
+~/open_claw/openclaw configure --service google
 ```
 Interactive prompts: choose `gmail-readonly + sheets + drive`. Press Enter to open browser.
 
@@ -236,19 +236,19 @@ Interactive prompts: choose `gmail-readonly + sheets + drive`. Press Enter to op
 
 - [ ] **Step 3: Verify token stored**
 ```bash
-/home/davidtobol2580/open_claw/openclaw secrets list 2>&1 | grep -i google
+~/open_claw/openclaw secrets list 2>&1 | grep -i google
 ```
 Expected: entries like `GOOGLE_OAUTH_TOKEN_DAVIDTUBUL10`.
 
 - [ ] **Step 4: Smoke test Gmail**
 ```bash
-/home/davidtobol2580/open_claw/openclaw infer gmail search --query "newer_than:7d" --max-results 3 2>&1 | head -20
+~/open_claw/openclaw infer gmail search --query "newer_than:7d" --max-results 3 2>&1 | head -20
 ```
 Expected: JSON list of 3 recent email metadata. If "no auth" → re-run Step 1.
 
 - [ ] **Step 5: Smoke test Sheets**
 ```bash
-/home/davidtobol2580/open_claw/openclaw infer sheets list 2>&1 | head -10
+~/open_claw/openclaw infer sheets list 2>&1 | head -10
 ```
 Expected: list of your spreadsheets (or empty array if you have none).
 
@@ -261,7 +261,7 @@ Expected: list of your spreadsheets (or empty array if you have none).
 
 - [ ] **Step 1: Open headed browser session**
 ```bash
-/home/davidtobol2580/open_claw/openclaw browser open --url https://www.linkedin.com/login --headed --persist linkedin
+~/open_claw/openclaw browser open --url https://www.linkedin.com/login --headed --persist linkedin
 ```
 A Chromium window opens.
 
@@ -276,7 +276,7 @@ Close the window. OpenClaw automatically saves cookies under the `linkedin` prof
 
 - [ ] **Step 5: Verify session reusable**
 ```bash
-/home/davidtobol2580/open_claw/openclaw browser fetch --url "https://www.linkedin.com/jobs/search/?keywords=automation&location=Israel" --persist linkedin --output /tmp/linkedin-test.html
+~/open_claw/openclaw browser fetch --url "https://www.linkedin.com/jobs/search/?keywords=automation&location=Israel" --persist linkedin --output /tmp/linkedin-test.html
 ```
 Expected: `/tmp/linkedin-test.html` is 50KB+ and contains the word `Automation`. If file is tiny or contains `Please log in`, the session didn't persist — repeat Step 1.
 
@@ -292,18 +292,18 @@ Expected: file size >50000 and grep count >= 3.
 ### Task 8: Create workspace directory structure
 
 **Files:**
-- Create: `/home/davidtobol2580/open_claw/workspace/.config/` (exists from Task 5)
-- Create: `/home/davidtobol2580/open_claw/workspace/data/runs/`
+- Create: `~/open_claw/workspace/.config/` (exists from Task 5)
+- Create: `~/open_claw/workspace/data/runs/`
 
 - [ ] **Step 1: Create dirs**
 ```bash
-mkdir -p /home/davidtobol2580/open_claw/workspace/data/runs
+mkdir -p ~/open_claw/workspace/data/runs
 mkdir -p ~/.openclaw/agents/main/skills/job-scout/tools
 ```
 
 - [ ] **Step 2: Verify**
 ```bash
-ls -la /home/davidtobol2580/open_claw/workspace/data/ ~/.openclaw/agents/main/skills/job-scout/
+ls -la ~/open_claw/workspace/data/ ~/.openclaw/agents/main/skills/job-scout/
 ```
 Expected: both directories exist and are empty (the skill dir has only `tools/` subdir).
 
@@ -312,13 +312,13 @@ Expected: both directories exist and are empty (the skill dir has only `tools/` 
 ### Task 9: Generate cv-summary.json from CV
 
 **Files:**
-- Read: `/home/davidtobol2580/open_claw/workspace/profile/cv.pdf`
-- Create: `/home/davidtobol2580/open_claw/workspace/profile/cv-summary.json`
+- Read: `~/open_claw/workspace/profile/cv.pdf`
+- Create: `~/open_claw/workspace/profile/cv-summary.json`
 
 - [ ] **Step 1: Extract CV text**
 ```bash
-/home/davidtobol2580/open_claw/openclaw infer document-extract \
-  --file /home/davidtobol2580/open_claw/workspace/profile/cv.pdf \
+~/open_claw/openclaw infer document-extract \
+  --file ~/open_claw/workspace/profile/cv.pdf \
   --output /tmp/cv-text.txt
 ```
 Expected: `/tmp/cv-text.txt` contains the CV text (~3KB).
@@ -331,16 +331,16 @@ Expected: count >= 1 (matches David's title).
 
 - [ ] **Step 3: Generate structured summary via LLM**
 ```bash
-/home/davidtobol2580/open_claw/openclaw infer model \
+~/open_claw/openclaw infer model \
   --model anthropic/claude-sonnet-4-6 \
   --system "Extract candidate profile as JSON with keys: name, title_current, years_experience, levels_acceptable (array), languages (array), automation_tools (array), domains (array), english_level, hebrew_level. Only valid JSON output, no markdown." \
   --user "$(cat /tmp/cv-text.txt)" \
-  --output /home/davidtobol2580/open_claw/workspace/profile/cv-summary.json
+  --output ~/open_claw/workspace/profile/cv-summary.json
 ```
 
 - [ ] **Step 4: Validate JSON**
 ```bash
-jq . /home/davidtobol2580/open_claw/workspace/profile/cv-summary.json
+jq . ~/open_claw/workspace/profile/cv-summary.json
 ```
 Expected: pretty-printed JSON with name="David Tubul", years_experience=5, levels_acceptable contains "senior" and "mid".
 
@@ -352,11 +352,11 @@ Open the JSON. Confirm `automation_tools` includes Playwright, Selenium, Cypress
 ### Task 10: Create Google Sheet "Job Search Tracker"
 
 **Files:**
-- Modify: `/home/davidtobol2580/open_claw/workspace/.config/job-scout.json`
+- Modify: `~/open_claw/workspace/.config/job-scout.json`
 
 - [ ] **Step 1: Create the sheet via OpenClaw**
 ```bash
-/home/davidtobol2580/open_claw/openclaw infer sheets create \
+~/open_claw/openclaw infer sheets create \
   --title "Job Search Tracker — David Tubul" \
   --tab-title "Jobs" \
   --output /tmp/sheet-create.json
@@ -367,7 +367,7 @@ Expected: a string like `1AbC...XyZ` (the sheet ID).
 - [ ] **Step 2: Write headers (row 1)**
 ```bash
 SHEET_ID=$(jq -r .spreadsheetId /tmp/sheet-create.json)
-/home/davidtobol2580/open_claw/openclaw infer sheets update \
+~/open_claw/openclaw infer sheets update \
   --sheet-id "$SHEET_ID" \
   --range "Jobs!A1:O1" \
   --values '[["ID","תאריך מציאה","מקור","תפקיד","חברה","מיקום","רמה","ציון התאמה","נימוק","קישור","סטטוס","תאריך הגשה","הערות","זוהה ממייל","עודכן"]]'
@@ -376,7 +376,7 @@ Expected: `{"updatedRange":"Jobs!A1:O1","updatedRows":1,"updatedColumns":15}` in
 
 - [ ] **Step 3: Apply header formatting (bold + freeze)**
 ```bash
-/home/davidtobol2580/open_claw/openclaw infer sheets format \
+~/open_claw/openclaw infer sheets format \
   --sheet-id "$SHEET_ID" \
   --range "Jobs!A1:O1" \
   --bold true --freeze-rows 1
@@ -386,13 +386,13 @@ Expected: `{"updatedRange":"Jobs!A1:O1","updatedRows":1,"updatedColumns":15}` in
 ```bash
 SHEET_ID=$(jq -r .spreadsheetId /tmp/sheet-create.json)
 jq --arg id "$SHEET_ID" '.google.sheet_id = $id' \
-  /home/davidtobol2580/open_claw/workspace/.config/job-scout.json \
-  > /tmp/job-scout.json.tmp && mv /tmp/job-scout.json.tmp /home/davidtobol2580/open_claw/workspace/.config/job-scout.json
+  ~/open_claw/workspace/.config/job-scout.json \
+  > /tmp/job-scout.json.tmp && mv /tmp/job-scout.json.tmp ~/open_claw/workspace/.config/job-scout.json
 ```
 
 - [ ] **Step 5: Verify**
 ```bash
-jq .google.sheet_id /home/davidtobol2580/open_claw/workspace/.config/job-scout.json
+jq .google.sheet_id ~/open_claw/workspace/.config/job-scout.json
 ```
 Expected: the sheet id string. Open `https://docs.google.com/spreadsheets/d/<id>` in browser to visually confirm.
 
@@ -1268,19 +1268,19 @@ Expected: 5 .md files, each 1-3 KB.
 
 - [ ] **Step 1: Register the skill**
 ```bash
-/home/davidtobol2580/open_claw/openclaw skills install ~/.openclaw/agents/main/skills/job-scout
+~/open_claw/openclaw skills install ~/.openclaw/agents/main/skills/job-scout
 ```
 Expected: `Installed skill: job-scout v1.0.0`
 
 - [ ] **Step 2: Verify**
 ```bash
-/home/davidtobol2580/open_claw/openclaw skills list 2>&1 | grep job-scout
+~/open_claw/openclaw skills list 2>&1 | grep job-scout
 ```
 Expected: `job-scout  1.0.0  enabled`
 
 - [ ] **Step 3: Check skill is ready**
 ```bash
-/home/davidtobol2580/open_claw/openclaw skills check job-scout
+~/open_claw/openclaw skills check job-scout
 ```
 Expected: all checks pass. If any fail (missing secrets, plugins, etc.) — fix and re-run.
 
@@ -1292,7 +1292,7 @@ Expected: all checks pass. If any fail (missing secrets, plugins, etc.) — fix 
 
 - [ ] **Step 1: Create cron**
 ```bash
-/home/davidtobol2580/open_claw/openclaw cron add \
+~/open_claw/openclaw cron add \
   --name "job-scout-daily" \
   --schedule "0 9 * * *" \
   --timezone "Asia/Jerusalem" \
@@ -1304,7 +1304,7 @@ Expected: all checks pass. If any fail (missing secrets, plugins, etc.) — fix 
 
 - [ ] **Step 2: Verify**
 ```bash
-/home/davidtobol2580/open_claw/openclaw cron list 2>&1
+~/open_claw/openclaw cron list 2>&1
 ```
 Expected: row `job-scout-daily  0 9 * * *  Asia/Jerusalem  job-scout  disabled`
 
@@ -1317,13 +1317,13 @@ Expected: row `job-scout-daily  0 9 * * *  Asia/Jerusalem  job-scout  disabled`
 
 - [ ] **Step 1: Get the group_id**
 ```bash
-GROUP_ID=$(jq -r .whatsapp.group_id /home/davidtobol2580/open_claw/workspace/.config/job-scout.json)
+GROUP_ID=$(jq -r .whatsapp.group_id ~/open_claw/workspace/.config/job-scout.json)
 echo "Routing inbound from $GROUP_ID to skill job-scout"
 ```
 
 - [ ] **Step 2: Add routing rule**
 ```bash
-/home/davidtobol2580/open_claw/openclaw channels route add \
+~/open_claw/openclaw channels route add \
   --channel whatsapp \
   --filter "chat=$GROUP_ID" \
   --skill job-scout \
@@ -1333,7 +1333,7 @@ Expected: `Route added: whatsapp[chat=$GROUP_ID] → skill:job-scout (conversati
 
 - [ ] **Step 3: Verify**
 ```bash
-/home/davidtobol2580/open_claw/openclaw channels route list
+~/open_claw/openclaw channels route list
 ```
 Expected: at least one route showing the group → job-scout binding.
 
@@ -1348,7 +1348,7 @@ Expected: at least one route showing the group → job-scout binding.
 
 - [ ] **Step 1: Invoke skill in dry-run mode**
 ```bash
-/home/davidtobol2580/open_claw/openclaw agent \
+~/open_claw/openclaw agent \
   --skill job-scout \
   --message "scout DRY_RUN_STAGES=1,2 NO_SEND=true" \
   --output /tmp/dryrun-1-2.json
@@ -1385,7 +1385,7 @@ EOF
 
 - [ ] **Step 2: Run CV-match only**
 ```bash
-/home/davidtobol2580/open_claw/openclaw agent \
+~/open_claw/openclaw agent \
   --skill job-scout \
   --message "cv-match-only INPUT=/tmp/test-candidates.json" \
   --output /tmp/dryrun-cv-match.json
@@ -1410,7 +1410,7 @@ If any expectation fails, tune `cv-match.md` rubric and re-run.
 
 - [ ] **Step 1: Invoke just the Gmail stage**
 ```bash
-/home/davidtobol2580/open_claw/openclaw agent \
+~/open_claw/openclaw agent \
   --skill job-scout \
   --message "gmail-only DAYS=14" \
   --output /tmp/dryrun-gmail.json
@@ -1435,8 +1435,8 @@ Confirm classifications look right. Sheet is NOT updated in this dry-run (NO_SEN
 
 - [ ] **Step 1: Append a test row**
 ```bash
-SHEET_ID=$(jq -r .google.sheet_id /home/davidtobol2580/open_claw/workspace/.config/job-scout.json)
-/home/davidtobol2580/open_claw/openclaw infer sheets update \
+SHEET_ID=$(jq -r .google.sheet_id ~/open_claw/workspace/.config/job-scout.json)
+~/open_claw/openclaw infer sheets update \
   --sheet-id "$SHEET_ID" \
   --range "Jobs!A:O" \
   --append \
@@ -1449,7 +1449,7 @@ Open `https://docs.google.com/spreadsheets/d/$SHEET_ID/edit`. Confirm new row ap
 - [ ] **Step 3: Clean up test row**
 Delete the test row manually in the browser (right-click → Delete row). Or use:
 ```bash
-/home/davidtobol2580/open_claw/openclaw infer sheets delete-row --sheet-id "$SHEET_ID" --row 2
+~/open_claw/openclaw infer sheets delete-row --sheet-id "$SHEET_ID" --row 2
 ```
 
 ---
@@ -1460,8 +1460,8 @@ Delete the test row manually in the browser (right-click → Delete row). Or use
 
 - [ ] **Step 1: Send a test message to the group**
 ```bash
-GROUP_ID=$(jq -r .whatsapp.group_id /home/davidtobol2580/open_claw/workspace/.config/job-scout.json)
-/home/davidtobol2580/open_claw/openclaw message send \
+GROUP_ID=$(jq -r .whatsapp.group_id ~/open_claw/workspace/.config/job-scout.json)
+~/open_claw/openclaw message send \
   --channel whatsapp \
   --target "$GROUP_ID" \
   --message "🤖 Job Scout test: this is a connectivity check."
@@ -1473,7 +1473,7 @@ On phone: in the "Job Scout 🤖" group, send `/status`.
 
 - [ ] **Step 3: Verify the skill received the message**
 ```bash
-/home/davidtobol2580/open_claw/openclaw logs --tail 100 2>&1 | grep -i "job-scout\|/status"
+~/open_claw/openclaw logs --tail 100 2>&1 | grep -i "job-scout\|/status"
 ```
 Expected: log lines showing the skill received `/status` and started processing.
 
@@ -1488,7 +1488,7 @@ On phone: confirm the agent replied with a status summary (will be all zeros ini
 
 - [ ] **Step 1: Run full scout but suppress send**
 ```bash
-/home/davidtobol2580/open_claw/openclaw agent \
+~/open_claw/openclaw agent \
   --skill job-scout \
   --message "scout NO_SEND=true" \
   --output /tmp/dryrun-full.json \
@@ -1528,7 +1528,7 @@ The skill and configs are now stable.
 
 - [ ] **Step 1: Manual trigger with live send**
 ```bash
-/home/davidtobol2580/open_claw/openclaw agent \
+~/open_claw/openclaw agent \
   --skill job-scout \
   --message "scout" \
   --timeout 600
@@ -1548,13 +1548,13 @@ Reopen the Sheet — rows from Task 27 are still there (no duplicates due to ded
 
 - [ ] **Step 1: Enable**
 ```bash
-/home/davidtobol2580/open_claw/openclaw cron enable job-scout-daily
+~/open_claw/openclaw cron enable job-scout-daily
 ```
 Expected: `Cron enabled: job-scout-daily`
 
 - [ ] **Step 2: Verify next run time**
 ```bash
-/home/davidtobol2580/open_claw/openclaw cron list 2>&1 | grep job-scout-daily
+~/open_claw/openclaw cron list 2>&1 | grep job-scout-daily
 ```
 Expected: shows `enabled` and a "next run" of tomorrow 09:00 Asia/Jerusalem.
 
@@ -1569,13 +1569,13 @@ Open the "Job Scout 🤖" group on phone. Expect a fresh daily message.
 
 - [ ] **Step 2: Check logs**
 ```bash
-/home/davidtobol2580/open_claw/openclaw logs --since 12h 2>&1 | grep -E "job-scout|cron"
+~/open_claw/openclaw logs --since 12h 2>&1 | grep -E "job-scout|cron"
 ```
 Expected: log entries showing cron fired at 09:00 and skill ran successfully.
 
 - [ ] **Step 3: Check run log file**
 ```bash
-ls -la /home/davidtobol2580/open_claw/workspace/data/runs/ | tail -5
+ls -la ~/open_claw/workspace/data/runs/ | tail -5
 ```
 Expected: a file `2026-05-27.json` (or next day) with full run summary.
 
@@ -1603,18 +1603,18 @@ If something goes badly wrong:
 
 ```bash
 # Disable cron
-/home/davidtobol2580/open_claw/openclaw cron disable job-scout-daily
+~/open_claw/openclaw cron disable job-scout-daily
 # Remove inbound routing
-/home/davidtobol2580/open_claw/openclaw channels route remove --channel whatsapp --filter "chat=$GROUP_ID"
+~/open_claw/openclaw channels route remove --channel whatsapp --filter "chat=$GROUP_ID"
 # Skill still exists but no longer runs
 ```
 
 To fully remove:
 ```bash
-/home/davidtobol2580/open_claw/openclaw cron remove job-scout-daily
-/home/davidtobol2580/open_claw/openclaw skills uninstall job-scout
+~/open_claw/openclaw cron remove job-scout-daily
+~/open_claw/openclaw skills uninstall job-scout
 rm -rf ~/.openclaw/agents/main/skills/job-scout
-rm -rf /home/davidtobol2580/open_claw/workspace/.config /home/davidtobol2580/open_claw/workspace/data
+rm -rf ~/open_claw/workspace/.config ~/open_claw/workspace/data
 # Sheet remains in your Drive — delete manually if desired.
 ```
 

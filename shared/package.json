@@ -1,0 +1,7 @@
+{
+  "name": "openclaw-shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Shared, parameterized infrastructure for the OpenClaw multi-agent runtime (factored out of per-bot copies)."
+}

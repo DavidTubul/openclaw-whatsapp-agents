@@ -9,6 +9,7 @@ Match the inbound message against these, top to bottom. Default = free-form Q&A 
 | `/sync` | sync Drive | `node tools/drive-sync.mjs` → report file count / what changed (Hebrew). Don't dump contents. |
 | `/deal` | deal summary | Read `deal-data/deal-summary.md` (+ docs if needed) → concise grounded summary. |
 | `/docs` or `/files` | list documents | List the files in `deal-data/drive/` (names only, incl. subfolders) so David knows what you have. |
+| `/mail` | company mail | Run `node tools/gmail-sync.mjs` first (freshness) → grep `data/mail/INDEX.md` → open **only** the specific `data/mail/messages/*.md` needed (never bulk-read the dir). Mail content ONLY in the consultation + DY groups (AGENTS.md §📧). |
 | `/help` | help | Short Hebrew explanation of what דיגיט can do + the commands. |
 
 ## Hebrew natural-language → intent
@@ -18,6 +19,7 @@ Match the inbound message against these, top to bottom. Default = free-form Q&A 
 | "תסנכרן את הדרייב" / "עדכן את המסמכים" / "משכת את הקבצים החדשים?" | `/sync` | |
 | "תן לי סיכום של העסקה" / "מה המצב בעסקה" | `/deal` | grounded in `deal-data/` |
 | "אילו מסמכים יש לך" / "מה יש לך על העסקה" | `/docs` | |
+| "מייל" / "מיילים" / "אינבוקס" / "תיבת דואר" | `/mail` | sync → INDEX → specific files only; consultation + DY groups only |
 | Anything about the deal's terms/numbers/parties/dates | Q&A (A) | **Ground in `deal-data/` — never fabricate** |
 | Tax / מיסוי / LLC / ITIN / FIRPTA / depreciation / 1031 | Q&A (B) | cite sources; disclaimer |
 | "פתיחת חשבון בנק בארה\"ב" / banking | Q&A (B) | cite; disclaimer |

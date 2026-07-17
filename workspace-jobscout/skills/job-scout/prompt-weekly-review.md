@@ -10,7 +10,7 @@ Sheet, so there is no outcome data to learn from. If somehow invoked for a guest
 ## Step 0 — pull the outcome funnel
 
 ```bash
-cd /home/davidtobol2580/open_claw/workspace
+cd ~/open_claw/workspace
 node tools/weekly-review.mjs > /tmp/weekly-review.json
 ```
 
@@ -89,8 +89,8 @@ Send ONE WhatsApp message to the configured group (proactive push — use `openc
 since this is the cron path, not a live reply):
 
 ```bash
-GROUP=$(node -e "console.log(require('./.config/job-scout.json').whatsapp.group_id)")
-/home/davidtobol2580/open_claw/openclaw message send --channel whatsapp --target "$GROUP" --message "<msg>"
+GROUP=$(node ~/open_claw/shared/tools/group-id.mjs main)
+~/open_claw/openclaw message send --channel whatsapp --target "$GROUP" --message "<msg>"
 ```
 
 Message shape — **a FULL, clearly-explained Hebrew report** (David's standing preference, set 2026-06-13:
@@ -110,6 +110,14 @@ know the terms. Structure:
 
 The report can be long — that's fine and desired. Clarity over brevity.
 
+> 🔇 **Final-output discipline (same trap as the daily scout, 2026-06-27).** This is the cron path, so
+> openclaw delivers the agent's **final-turn text** to the group as a message. If you end the run with
+> an English recap ("Done. Weekly self-review completed…"), David gets it **on top of** the Hebrew
+> report above — a duplicate English message he doesn't want. So: the ONLY user-facing message is the
+> single Hebrew `message send` in this step. After sending it, **end the run silently — empty final
+> output, no recap, no English summary, no status line.** Any run facts belong in the Step 2 lessons
+> file, never in the final turn.
+
 Then **STOP**. Do NOT edit any criteria file in the cron run. The proposal waits for David.
 
 ## Step 4 — applying the proposal (happens LATER, in a Q&A turn — described here for continuity)
@@ -120,3 +128,17 @@ message. Per SKILL.md hard rule #8 (controlled self-modification): read the newe
 the named file (add to the array if not already present), confirm in Hebrew exactly what changed,
 and note that it takes effect on the next scout run. If David says no / ignores it, apply nothing —
 the lessons file stays as a record either way. Never apply without an explicit approval.
+
+## Company discovery (added 2026-07-15 — grow the watchlist automatically)
+
+After the lessons file is written, run ONE Tavily discovery pass to find Israeli companies hiring QA/automation on ATS platforms we poll:
+```bash
+cd ~/open_claw/workspace-jobscout/tools && node search.mjs --person david
+```
+From the results, extract company slugs NOT already in `people/david/company-watchlist.json`:
+- `comeet.com/jobs/<slug>/<uid>` → `{ats:"comeet", slug, uid, name}`
+- `job-boards.greenhouse.io/<token>` → `{ats:"greenhouse", slug: token, name}`
+- `jobs.lever.co/<slug>` → `{ats:"lever", slug, name}` (`jobs.eu.lever.co` → `lever-eu`)
+- `jobs.ashbyhq.com/<org>` → `{ats:"ashby", slug: org, name}`
+- `careers.smartrecruiters.com/<Company>` → `{ats:"smartrecruiters", slug, name}`
+Append the new entries to the `companies` array in `people/david/company-watchlist.json` (valid JSON — re-read the file after writing to confirm it parses). List every added company in the weekly report under `🏢 חברות חדשות ל-watchlist:`. If none found, say so in one line. Cap: add at most 10 per week.
