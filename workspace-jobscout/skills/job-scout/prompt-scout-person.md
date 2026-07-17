@@ -367,10 +367,6 @@ Always render the `@{P.e164 without leading +}` mention so this report is tagged
   • {company} — {title}, נשלחה ב-{DD/MM} [לא נשלחה שוב]
   {if more than 8:}• +{N} נוספות (בגיליון)
 
-📋 משרות פתוחות (ממתינות לתשובה):
-{rows with status ✅ Applied or 📞 Interview, oldest applied_at first:}
-  • {company} — {title or "—"} [{days} ימים] {📞 if Interview}
-
 {if needs_info not empty:}
 ❓ זיהיתי שהגשת בעצמך למשרות הבאות (לא המלצתי עליהן) ולא הצלחתי למצוא פרטים.
 שלח לי כאן את הקישור לכל אחת ואשלים את הנתונים:
@@ -462,12 +458,21 @@ echo '{"date":"<iso>","person":"<P.id>","mode":"dry-run","candidates":<n>,"kept"
 
 ## ⚠️ Final output discipline — DO NOT narrate the run (applies to BOTH modes)
 
-You are a spawned sub-agent. **Your final assistant text becomes the announce back to the orchestrator's
-chat channel — and could leak to the WhatsApp group.** The ONLY user-facing message is the LIVE Step 7 send
-you already made via `openclaw message send` (or, in DRY RUN, the file you wrote — which sends nothing).
+You are a spawned sub-agent. **EVERY turn you produce — not only your literal last one — becomes an
+announce back to the orchestrator's chat channel, and that announce is delivery-bound: it can be sent
+straight to the WhatsApp group.** This pipeline runs across many steps and tool calls, i.e. many separate
+turns (Step 1 fetch, Step 2 scoring, Step 6 compose, Step 7 send, Step 8 log, …) — the leak is NOT limited
+to your final reply. The ONLY user-facing message in this whole run is the LIVE Step 7 send you make via
+`openclaw message send` (or, in DRY RUN, the file you wrote — which sends nothing).
 
-- **Do NOT** write a closing summary, recap, or status narration (e.g. "Scout complete for David…"). That is
-  internal pipeline chatter and it can leak into David's group as an unwanted (often English) message.
-- Per-person run facts belong **only** in the Step 8 log file and stderr — never in your final reply.
+- **On every single turn, your visible assistant text must be EMPTY — zero prose — except tool calls.**
+  Do not think out loud between steps, do not explain what you're about to do or just did (e.g. "Message
+  sent successfully, now logging Step 8", "Zero surviving candidates so this is a heartbeat run",
+  "now running the link-maintenance check"). That is internal pipeline chatter, and on this session it is
+  not invisible — it gets delivered to David's group as an unwanted (often English) message, every time it
+  happens, not just once at the end.
+- **Do NOT** write a closing summary, recap, or status narration (e.g. "Scout complete for David…") either.
+- Per-person run facts belong **only** in the Step 8 log file and stderr — never in ANY assistant reply.
 - End the run **silently**: your final turn output must be exactly `NO_REPLY` — the OpenClaw sentinel that
-  suppresses the announce. Never Hebrew/English prose, never a summary, never a bare `.`.
+  suppresses the announce. Never Hebrew/English prose, never a summary, never a bare `.` — on every turn,
+  not only the last one.
